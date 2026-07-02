@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  FileCheck2,
-  FileUp,
-  Loader2,
-  Volume2,
-} from "lucide-react";
+import { ArrowRight, FileCheck2, FileUp, Loader2, Volume2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -424,8 +418,7 @@ export function ResumeOnboarding({
             Start with your resume
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Upload your resume once. Mira will parse your profile first, then
-            use it to prepare applications.
+            Upload your resume once. Mira is excited to get to know you.
           </p>
         </div>
 
