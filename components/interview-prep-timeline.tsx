@@ -215,9 +215,6 @@ export function InterviewPrepTimeline({
               {job.role} at {job.company}
             </CardDescription>
             <CardTitle className="mt-2 text-2xl">{stage.title}</CardTitle>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {stage.expectation}
-            </p>
           </div>
           <div className="flex flex-col gap-3 sm:items-end">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-xs">
@@ -318,7 +315,7 @@ export function InterviewPrepTimeline({
                       <motion.button
                         key={`${phaseIndex}-${cardIndex}`}
                         type="button"
-                        className="relative min-h-[380px] w-full rounded-2xl border border-blue-100 bg-white p-10 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/25"
+                        className="relative min-h-[380px] w-full rounded-2xl border border-blue-100 bg-white p-10 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_30px_80px_rgba(37,99,235,0.16)] focus-visible:ring-2 focus-visible:ring-primary/25"
                         initial={{
                           opacity: 0,
                           x: direction * 42,

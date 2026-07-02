@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,13 @@ type PreparedResponse = Partial<
   interviewRoadmap?: { stages?: InterviewStage[] };
 };
 
+const loadingMessages = [
+  "Reading your resume",
+  "Matching the job post",
+  "Drafting application materials",
+  "Building interview prep",
+];
+
 function asStringArray(value: unknown, fallback: string[]) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -105,7 +112,7 @@ function asInterviewPrep(response: PreparedResponse): InterviewStage[] {
 
 function RequiredMark() {
   return (
-    <span className="text-red-600" aria-hidden="true">
+    <span className="text-red-500" aria-hidden="true">
       *
     </span>
   );
@@ -113,7 +120,7 @@ function RequiredMark() {
 
 function errorBorder(active?: boolean) {
   return active
-    ? "border-red-500 ring-1 ring-red-500/25 focus:border-red-500 focus:ring-red-500/25"
+    ? "border-red-300 bg-red-50/20 ring-1 ring-red-200 focus:border-red-400 focus:ring-red-200"
     : "";
 }
 
@@ -163,6 +170,7 @@ export function PrepareApplicationForm() {
   const { resume, addJob } = useApplicationStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, formState, setValue, control } =
     useForm<FormValues>({
@@ -178,6 +186,22 @@ export function PrepareApplicationForm() {
       },
     });
   const selectedWorkMode = useWatch({ control, name: "workMode" });
+  function loadingProgress() {
+    return `${Math.min(30 + loadingStep * 22, 96)}%`;
+  }
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setLoadingStep((step) =>
+        Math.min(step + 1, loadingMessages.length - 1),
+      );
+    }, 1600);
+
+    return () => window.clearInterval(timer);
+  }, [loading]);
 
   async function onSubmit(values: FormValues) {
     if (!resume) {
@@ -187,6 +211,7 @@ export function PrepareApplicationForm() {
       return;
     }
 
+    setLoadingStep(0);
     setLoading(true);
     setError(null);
 
@@ -216,6 +241,7 @@ export function PrepareApplicationForm() {
           : "Something went wrong.",
       );
     } finally {
+      setLoadingStep(0);
       setLoading(false);
     }
   }
@@ -251,7 +277,7 @@ export function PrepareApplicationForm() {
                 />
               </div>
               {formState.errors.role && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-red-500">
                   {formState.errors.role.message}
                 </p>
               )}
@@ -276,7 +302,7 @@ export function PrepareApplicationForm() {
                 />
               </div>
               {formState.errors.company && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-red-500">
                   {formState.errors.company.message}
                 </p>
               )}
@@ -302,7 +328,7 @@ export function PrepareApplicationForm() {
                         "flex min-h-20 items-start justify-between rounded-xl border bg-card p-4 text-left transition hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_8px_22px_rgba(37,99,235,0.10)]",
                         active ? " bg-primary/5" : "border-blue-200",
                         formState.errors.workMode &&
-                          "border-red-500 ring-1 ring-red-500/25 hover:border-red-500",
+                          "border-red-300 bg-red-50/20 ring-1 ring-red-200 hover:border-red-400",
                       )}
                       onClick={() =>
                         setValue("workMode", mode, {
@@ -358,7 +384,7 @@ export function PrepareApplicationForm() {
                 />
               </div>
               {formState.errors.location && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-red-500">
                   {formState.errors.location.message}
                 </p>
               )}
@@ -381,7 +407,7 @@ export function PrepareApplicationForm() {
               {...register("platform")}
             />
             {formState.errors.platform && (
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-red-500">
                 {formState.errors.platform.message}
               </p>
             )}
@@ -406,7 +432,7 @@ export function PrepareApplicationForm() {
               />
             </div>
             {formState.errors.jobUrl && (
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-red-500">
                 {formState.errors.jobUrl.message}
               </p>
             )}
@@ -428,24 +454,32 @@ export function PrepareApplicationForm() {
               {...register("jobDescription")}
             />
             {formState.errors.jobDescription && (
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-red-500">
                 {formState.errors.jobDescription.message}
               </p>
             )}
           </motion.label>
           {error && (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950">
+            <p className="rounded-md border border-red-200 bg-red-50/70 px-3 py-2 text-sm text-red-500 dark:border-red-900 dark:bg-red-950">
               {error}
             </p>
           )}
           <motion.div whileTap={{ scale: 0.98 }}>
             <Button
               type="submit"
-              className=" h-12 w-full text-base sm:flex rounded-xl"
+              className="relative h-12 w-full overflow-hidden rounded-xl text-base sm:flex"
               disabled={loading || !resume}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save Job Application
+              {loading && (
+                <span
+                  className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-500"
+                  style={{ width: loadingProgress() }}
+                />
+              )}
+              <span className="relative inline-flex items-center gap-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {loading ? loadingMessages[loadingStep] : "Save Job Application"}
+              </span>
             </Button>
           </motion.div>
         </form>

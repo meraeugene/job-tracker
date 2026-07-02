@@ -6,7 +6,6 @@ import {
   Droppable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { motion } from "framer-motion";
 import { Columns3 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { JobCard } from "@/components/job-card";
@@ -73,17 +72,18 @@ function BoardColumn({
           ref={provided.innerRef}
           {...provided.droppableProps}
           className={cn(
-            "min-h-[640px] w-[280px] shrink-0 rounded-xl border border-border bg-card p-3 shadow-[0_8px_24px_rgba(15,23,42,0.035)] transition",
-            snapshot.isDraggingOver && "border-primary ring-2 ring-primary/25",
+            "flex max-h-[calc(100vh-15rem)] min-h-[640px] min-w-0 flex-col rounded-lg border border-border bg-[#fbfcff] p-3 shadow-[0_8px_24px_rgba(15,23,42,0.035)] transition dark:bg-card",
+            snapshot.isDraggingOver &&
+              "border-primary bg-primary/5 ring-2 ring-primary/20",
           )}
         >
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex shrink-0 items-center justify-between border-b border-border pb-3">
             <h3 className="whitespace-nowrap font-medium">{status}</h3>
-            <span className="rounded-full bg-card px-2 py-1 text-xs text-muted-foreground">
+            <span className="rounded-full border border-border bg-card px-2 py-1 text-xs text-muted-foreground">
               {jobs.length}
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             {jobs.map((job, index) => (
               <Draggable key={job.id} draggableId={job.id} index={index}>
                 {(dragProvided, dragSnapshot) => (
@@ -91,9 +91,15 @@ function BoardColumn({
                     ref={dragProvided.innerRef}
                     {...dragProvided.draggableProps}
                     {...dragProvided.dragHandleProps}
-                    className="cursor-grab active:cursor-grabbing"
+                    className={cn(
+                      "transition",
+                      dragSnapshot.isDragging && "relative z-20",
+                    )}
                   >
-                    <JobCard job={job} isDragging={dragSnapshot.isDragging} />
+                    <JobCard
+                      job={job}
+                      isDragging={dragSnapshot.isDragging}
+                    />
                   </div>
                 )}
               </Draggable>
@@ -159,13 +165,9 @@ export function ApplicationBoard() {
         </p>
       </div>
       <Card className="w-full overflow-hidden shadow-[0_18px_54px_rgba(37,99,235,0.06)]">
-        <CardContent className="overflow-x-auto p-4">
+        <CardContent className="p-4">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex w-max min-w-full gap-4"
-            >
+            <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 2xl:gap-4">
               {trackerStatuses.map((status) => (
                 <BoardColumn
                   key={status}
@@ -173,7 +175,7 @@ export function ApplicationBoard() {
                   jobs={columns[status]}
                 />
               ))}
-            </motion.div>
+            </div>
           </DragDropContext>
         </CardContent>
       </Card>

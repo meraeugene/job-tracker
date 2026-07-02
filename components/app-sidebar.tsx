@@ -6,7 +6,6 @@ import { LayoutGroup, motion } from "framer-motion";
 import {
   BriefcaseBusiness,
   Columns3,
-  FileCheck2,
   Mail,
   MessageSquareText,
   SquarePen,
@@ -26,7 +25,6 @@ const items = [
   },
   { label: "Cover Letters", href: "/cover-letters", icon: Mail },
   { label: "Interview Prep", href: "/interview-prep", icon: MessageSquareText },
-  { label: "Resume Improve", href: "/resume-improvements", icon: FileCheck2 },
 ];
 
 function HeaderLinks() {

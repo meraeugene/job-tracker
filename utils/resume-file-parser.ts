@@ -55,12 +55,14 @@ async function extractDocxText(file: File) {
 
 export async function parseResumeFile(file: File): Promise<ResumeProfile> {
   const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension !== "pdf" && extension !== "docx") {
+    throw new Error("Upload a resume as a PDF or DOCX file.");
+  }
+
   const rawText =
     extension === "pdf"
       ? await extractPdfText(file)
-      : extension === "docx"
-        ? await extractDocxText(file)
-        : "";
+      : await extractDocxText(file);
 
   const lastUpdated = new Intl.DateTimeFormat("en", {
     month: "long",

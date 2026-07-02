@@ -11,7 +11,8 @@ Job Tracker is a Next.js App Router job application workspace. Users upload a re
 - TanStack Table
 - dnd-kit
 - Supabase database/auth/storage clients
-- Gemini API routes for resume parsing, application material generation, and voice interview coaching
+- Gemini API routes for resume parsing, application material generation, and interview coaching
+- ElevenLabs TTS for Mira's human voice
 - PDF parsing dependency ready for resume ingestion
 
 ## Getting Started
@@ -34,8 +35,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 GEMINI_API_KEY
 GEMINI_MODEL
-GEMINI_TTS_MODEL
-GEMINI_TTS_VOICE
+ELEVENLABS_API_KEY
+ELEVENLABS_VOICE_ID
+ELEVENLABS_MODEL_ID
+ELEVENLABS_OUTPUT_FORMAT
 JWT_SECRET
 NEXT_PUBLIC_APP_URL
 ```
@@ -69,4 +72,6 @@ The API route `POST /api/parse-resume` extracts structured profile sections from
 
 The API route `POST /api/interview-voice` accepts a transcript answer and returns Gemini-powered interview feedback plus the next voice prompt. Add `GEMINI_API_KEY` to `.env.local` to enable live coaching.
 
-The API route `POST /api/speak` generates Mira's spoken interview prompts with Gemini TTS. Optional `GEMINI_TTS_MODEL` and `GEMINI_TTS_VOICE` values control the model and voice; the browser voice is used as a fallback if TTS is unavailable.
+The API route `POST /api/speak` generates Mira's spoken onboarding and interview prompts with ElevenLabs only. Add `ELEVENLABS_API_KEY` to enable voice. `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL_ID`, and `ELEVENLABS_OUTPUT_FORMAT` control the default voice, model, and returned audio format. The default voice is Matilda (`XrExE9yKIg1WjnnlVkGX`), a warm young female ElevenLabs premade voice. The splash screen lets users preview and select the free-working female voices tested for this app: Matilda (`XrExE9yKIg1WjnnlVkGX`), Sarah (`EXAVITQu4vr4xnSDxMaL`), and Lily (`pFZP5JQG7iQjIQuC4Bku`). The default model is `eleven_flash_v2_5`, which is suited for low-latency interview prompts.
+
+ElevenLabs has a free tier suitable for local testing and demos, but quota and licensing limits apply. Check the current ElevenLabs plan details before using it in production.

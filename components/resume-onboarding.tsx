@@ -1,9 +1,22 @@
 "use client";
 
-import { ArrowRight, FileCheck2, FileUp, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  FileCheck2,
+  FileUp,
+  Loader2,
+  Mic2,
+  Volume2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useApplicationStore } from "@/hooks/use-application-store";
@@ -15,7 +28,28 @@ const introMessages = [
   "Your workspace is saved to this browser on your device. Upload your resume when you are ready to start.",
 ];
 
+const splashMessage =
+  "Welcome to Mira. Choose the voice you like, preview it if you want, then click get started.";
 const introPill = "Your application prep friend";
+const miraVoiceKey = "job-tracker:mira-voice-id";
+const defaultMiraVoiceId = "XrExE9yKIg1WjnnlVkGX";
+const miraVoiceOptions = [
+  {
+    id: "XrExE9yKIg1WjnnlVkGX",
+    name: "Matilda",
+    tone: "Warm young voice",
+  },
+  {
+    id: "EXAVITQu4vr4xnSDxMaL",
+    name: "Sarah",
+    tone: "Soft young voice",
+  },
+  {
+    id: "pFZP5JQG7iQjIQuC4Bku",
+    name: "Lily",
+    tone: "Bright textured voice",
+  },
+];
 
 function AnimatedIntroText({ text }: { text: string }) {
   const words = text.split(" ");
@@ -75,11 +109,83 @@ export function ResumeOnboarding({
   const [introStep, setIntroStep] = useState(0);
   const [showSplash, setShowSplash] = useState(!embedded);
   const [introComplete, setIntroComplete] = useState(embedded);
+  const [mounted, setMounted] = useState(false);
+  const [selectedVoiceId, setSelectedVoiceId] = useState(defaultMiraVoiceId);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const splashSpokenRef = useRef(false);
 
   useEffect(() => {
     if (!redirectWhenReady || !resume) return;
     router.replace(redirectTo);
   }, [redirectTo, redirectWhenReady, resume, router]);
+
+  useEffect(() => {
+    globalThis.setTimeout(() => setMounted(true), 0);
+  }, []);
+
+  const activeVoiceId = mounted
+    ? (miraVoiceOptions.find(
+        (voice) => voice.id === window.localStorage.getItem(miraVoiceKey),
+      )?.id ?? selectedVoiceId)
+    : selectedVoiceId;
+
+  const stopMiraAudio = useCallback(() => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopMiraAudio();
+    };
+  }, [stopMiraAudio]);
+
+  function chooseVoice(voiceId: string) {
+    setSelectedVoiceId(voiceId);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(miraVoiceKey, voiceId);
+    }
+  }
+
+  const playMiraVoice = useCallback(
+    (text: string, voiceId: string, onEnd?: () => void) => {
+      stopMiraAudio();
+
+      void fetch("/api/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voiceId }),
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Mira voice failed.");
+          return response.blob();
+        })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audioUrlRef.current = url;
+          const releaseAudio = () => {
+            audioRef.current = null;
+            URL.revokeObjectURL(url);
+            if (audioUrlRef.current === url) {
+              audioUrlRef.current = null;
+            }
+            onEnd?.();
+          };
+          audio.onended = releaseAudio;
+          audio.onerror = releaseAudio;
+          return audio.play();
+        })
+        .catch(() => onEnd?.());
+    },
+    [stopMiraAudio],
+  );
 
   useEffect(() => {
     if (!resumeParsing) {
@@ -115,34 +221,47 @@ export function ResumeOnboarding({
       }, 600);
     }
 
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      const noSpeechTimer = globalThis.setTimeout(
-        advanceIntro,
-        Math.max(4200, introMessages[introStep].split(/\s+/).length * 430),
-      );
-      return () => globalThis.clearTimeout(noSpeechTimer);
-    }
-
-    const timer = window.setTimeout(() => {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(introMessages[introStep]);
-      utterance.lang = "en-GB";
-      utterance.rate = 0.95;
-      utterance.onend = advanceIntro;
-      utterance.onerror = utterance.onend;
-      window.speechSynthesis.speak(utterance);
-    }, 0);
     const fallbackTimer = window.setTimeout(
       advanceIntro,
       Math.max(4200, introMessages[introStep].split(/\s+/).length * 430),
     );
 
+    playMiraVoice(introMessages[introStep], activeVoiceId, advanceIntro);
+
     return () => {
-      window.clearTimeout(timer);
       window.clearTimeout(fallbackTimer);
-      window.speechSynthesis?.cancel();
+      stopMiraAudio();
     };
-  }, [embedded, introComplete, introStep, resume, showSplash]);
+  }, [
+    embedded,
+    introComplete,
+    introStep,
+    playMiraVoice,
+    resume,
+    activeVoiceId,
+    showSplash,
+    stopMiraAudio,
+  ]);
+
+  useEffect(() => {
+    if (embedded || resume || !showSplash || splashSpokenRef.current) {
+      return;
+    }
+
+    splashSpokenRef.current = true;
+    playMiraVoice(splashMessage, activeVoiceId);
+
+    return () => {
+      stopMiraAudio();
+    };
+  }, [
+    embedded,
+    playMiraVoice,
+    resume,
+    activeVoiceId,
+    showSplash,
+    stopMiraAudio,
+  ]);
 
   async function upload(file: File | undefined) {
     if (!file || resumeParsing) return;
@@ -213,17 +332,41 @@ export function ResumeOnboarding({
           >
             {introPill}
           </motion.div>
+
           <AnimatedIntroText text="Welcome to Mira" />
+
           <motion.div
-            className="mx-auto mt-5 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base"
-            initial={{ opacity: 0, y: 10 }}
+            className="mx-auto mt-7 flex w-full max-w-sm items-center gap-2"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18 }}
+            transition={{ delay: 0.22 }}
           >
-            Mira helps you turn your resume into a profile, prepare tailored
-            applications, draft cover letters, and practice interviews with
-            focused flashcards.
+            <label className="sr-only" htmlFor="mira-voice">
+              Mira voice
+            </label>
+            <select
+              id="mira-voice"
+              className="h-10 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              value={activeVoiceId}
+              onChange={(event) => chooseVoice(event.target.value)}
+            >
+              {miraVoiceOptions.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name} - {voice.tone}
+                </option>
+              ))}
+            </select>
+            <Button
+              size="icon"
+              variant="secondary"
+              type="button"
+              aria-label="Preview Mira voice"
+              onClick={() => playMiraVoice(splashMessage, activeVoiceId)}
+            >
+              <Volume2 className="h-4 w-4" />
+            </Button>
           </motion.div>
+
           <motion.div
             className="mt-8"
             initial={{ opacity: 0, y: 8 }}

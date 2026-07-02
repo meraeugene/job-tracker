@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Loader2,
-  Mic,
-  PhoneCall,
-  X,
-} from "lucide-react";
+import { Loader2, Mic, PhoneCall, ShieldCheck, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,11 +34,15 @@ type Turn = {
   feedback?: string;
 };
 
-const interviewerVoiceName = "Google UK English Female";
-const interviewerVoiceLang = "en-GB";
 const interviewerName = "Mira";
-const introMessage =
-  `Hello, I am ${interviewerName}, your AI interviewer. I will guide this practice session, ask one question at a time, and wait for your answer before giving feedback.`;
+const introMessage = `Hello, I am ${interviewerName}, your AI interviewer. I will guide this interview, ask one question at a time, and let you know when we reach the final question.`;
+const miraVoiceKey = "job-tracker:mira-voice-id";
+const defaultMiraVoiceId = "XrExE9yKIg1WjnnlVkGX";
+const allowedMiraVoiceIds = new Set([
+  "EXAVITQu4vr4xnSDxMaL",
+  "XrExE9yKIg1WjnnlVkGX",
+  "pFZP5JQG7iQjIQuC4Bku",
+]);
 
 function isMeaningfulAnswer(value: string) {
   const clean = value.trim();
@@ -56,75 +54,46 @@ function isMeaningfulAnswer(value: string) {
   return clean.length >= 8 && words.length >= 2;
 }
 
-function AnimatedQuestion({ text }: { text: string }) {
-  return (
-    <motion.p
-      key={text}
-      className="max-w-3xl text-center text-2xl font-semibold leading-9 sm:text-3xl sm:leading-10"
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: {
-          transition: {
-            staggerChildren: 0.035,
-          },
-        },
-      }}
-    >
-      {text.split(" ").map((word, index) => (
-        <motion.span
-          key={`${word}-${index}`}
-          className="inline-block"
-          variants={{
-            hidden: { opacity: 0, y: 10, filter: "blur(4px)" },
-            visible: { opacity: 1, y: 0, filter: "blur(0px)" },
-          }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
-        >
-          {word}
-          {index < text.split(" ").length - 1 ? "\u00a0" : ""}
-        </motion.span>
-      ))}
-    </motion.p>
-  );
-}
-
 function FeedbackCard({ turn, index }: { turn: Turn; index: number }) {
   return (
     <motion.article
-      className="rounded-xl border border-border bg-card p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]"
+      className="rounded-lg border border-border bg-card p-4 shadow-[0_12px_32px_rgba(15,23,42,0.045)]"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: index * 0.04 }}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-          Practice turn {index + 1}
-        </span>
+        <div>
+          <p className="text-xs font-medium uppercase text-muted-foreground">
+            Question {index + 1}
+          </p>
+          <h5 className="mt-1 text-base font-semibold">Interview note</h5>
+        </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <section className="rounded-lg border border-border bg-background p-3">
+      <div className="space-y-4">
+        <div>
           <p className="text-xs font-medium uppercase text-muted-foreground">
             Question
           </p>
-          <p className="mt-2 text-sm font-medium leading-6">{turn.question}</p>
-        </section>
-        <section className="rounded-lg border border-border bg-background p-3">
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-foreground">
+            {turn.question}
+          </p>
+        </div>
+        <div>
           <p className="text-xs font-medium uppercase text-muted-foreground">
             Your answer
           </p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {turn.answer}
           </p>
-        </section>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-3">
+          <p className="text-xs font-medium uppercase text-primary">Feedback</p>
+          <p className="mt-1 text-sm leading-6 text-foreground">
+            {turn.feedback}
+          </p>
+        </div>
       </div>
-      <section className="mt-3 rounded-lg border border-primary/15 bg-primary/5 p-3">
-        <p className="text-xs font-medium uppercase text-primary">Feedback</p>
-        <p className="mt-2 text-sm leading-6 text-foreground">
-          {turn.feedback}
-        </p>
-      </section>
     </motion.article>
   );
 }
@@ -158,8 +127,9 @@ export function VoiceInterviewPanel({
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [autoSending, setAutoSending] = useState(false);
+  const [confirmingAnswer, setConfirmingAnswer] = useState(false);
+  const [submitCountdown, setSubmitCountdown] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [focusWarnings, setFocusWarnings] = useState(0);
   const [lastWarning, setLastWarning] = useState<string | null>(null);
@@ -168,47 +138,20 @@ export function VoiceInterviewPanel({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const confirmationTimerRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const listeningWantedRef = useRef(false);
   const loadingRef = useRef(false);
   const submittingRef = useRef(false);
   const lastSubmittedRef = useRef("");
   const restartAttemptsRef = useRef(0);
-  const maxTurns = Math.max(4, stage.questions.length || 4);
+  const maxTurns = Math.min(5, Math.max(3, stage.questions.length || 4));
   const supported = useMemo(() => Boolean(getSpeechRecognition()), []);
-  const interviewerVoice = useMemo(
-    () =>
-      voices.find(
-        (voice) =>
-          voice.name === interviewerVoiceName &&
-          voice.lang.toLowerCase() === interviewerVoiceLang.toLowerCase(),
-      ) ??
-      voices.find((voice) => voice.name === interviewerVoiceName) ??
-      null,
-    [voices],
-  );
 
   useEffect(() => {
     loadingRef.current = loading || autoSending;
   }, [autoSending, loading]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-    function loadVoices() {
-      const availableVoices = window.speechSynthesis
-        .getVoices()
-        .filter((voice) => voice.lang.toLowerCase().startsWith("en"));
-      setVoices(availableVoices);
-    }
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
 
   useEffect(() => {
     if (!started) return;
@@ -246,8 +189,9 @@ export function VoiceInterviewPanel({
       stopCamera();
       listeningWantedRef.current = false;
       clearSilenceTimer();
+      clearConfirmationTimer();
+      clearCountdownTimer();
       stopMiraAudio();
-      window.speechSynthesis?.cancel();
     };
   }, []);
 
@@ -255,6 +199,20 @@ export function VoiceInterviewPanel({
     if (silenceTimerRef.current) {
       window.clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
+    }
+  }
+
+  function clearConfirmationTimer() {
+    if (confirmationTimerRef.current) {
+      window.clearTimeout(confirmationTimerRef.current);
+      confirmationTimerRef.current = null;
+    }
+  }
+
+  function clearCountdownTimer() {
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
     }
   }
 
@@ -267,31 +225,18 @@ export function VoiceInterviewPanel({
     }
   }
 
-  function speakWithBrowser(text: string, onEnd?: () => void) {
-    if (!("speechSynthesis" in window)) {
-      globalThis.setTimeout(() => onEnd?.(), 450);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.lang = interviewerVoiceLang;
-    utterance.voice = interviewerVoice;
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = () => onEnd?.();
-    window.speechSynthesis.speak(utterance);
-  }
-
   function speak(text = question, onEnd?: () => void) {
     stopMiraAudio();
-    window.speechSynthesis?.cancel();
+    const storedVoiceId = window.localStorage.getItem(miraVoiceKey);
+    const voiceId =
+      storedVoiceId && allowedMiraVoiceIds.has(storedVoiceId)
+        ? storedVoiceId
+        : defaultMiraVoiceId;
 
     void fetch("/api/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, voiceId }),
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("Voice API failed.");
@@ -308,11 +253,15 @@ export function VoiceInterviewPanel({
         };
         audio.onerror = () => {
           stopMiraAudio();
-          speakWithBrowser(text, onEnd);
+          setError(
+            "Mira voice failed. Check your ElevenLabs API key and quota.",
+          );
         };
         return audio.play();
       })
-      .catch(() => speakWithBrowser(text, onEnd));
+      .catch(() => {
+        setError("Mira voice failed. Check your ElevenLabs API key and quota.");
+      });
   }
 
   async function startCamera() {
@@ -373,8 +322,7 @@ export function VoiceInterviewPanel({
       const nextAnswer = allTranscript || finalTranscript;
       setAnswer(nextAnswer);
       if (isMeaningfulAnswer(finalTranscript)) {
-        setAutoSending(true);
-        void submitAnswer(finalTranscript).finally(() => setAutoSending(false));
+        confirmAnswer(finalTranscript);
       }
     };
     recognition.onend = () => {
@@ -383,7 +331,9 @@ export function VoiceInterviewPanel({
         restartAttemptsRef.current += 1;
         if (restartAttemptsRef.current > 6) {
           listeningWantedRef.current = false;
-          setError("Mira paused listening. Speak again by restarting the interview.");
+          setError(
+            "Mira paused listening. Speak again by restarting the interview.",
+          );
           return;
         }
         window.setTimeout(() => {
@@ -399,17 +349,24 @@ export function VoiceInterviewPanel({
         restartAttemptsRef.current += 1;
         if (restartAttemptsRef.current > 6) {
           listeningWantedRef.current = false;
-          setError("Mira paused listening. Speak again by restarting the interview.");
+          setError(
+            "Mira paused listening. Speak again by restarting the interview.",
+          );
           return;
         }
-        window.setTimeout(() => {
-          if (listeningWantedRef.current && !loadingRef.current) {
-            startListening();
-          }
-        }, event.error === "no-speech" ? 250 : 650);
+        window.setTimeout(
+          () => {
+            if (listeningWantedRef.current && !loadingRef.current) {
+              startListening();
+            }
+          },
+          event.error === "no-speech" ? 250 : 650,
+        );
         return;
       }
-      setError("Could not capture your voice. You can type your answer instead.");
+      setError(
+        "Could not capture your voice. You can type your answer instead.",
+      );
     };
     recognitionRef.current = recognition;
     recognition.start();
@@ -424,10 +381,37 @@ export function VoiceInterviewPanel({
     setListening(false);
   }
 
+  function confirmAnswer(finalTranscript: string) {
+    if (submittingRef.current || confirmationTimerRef.current) return;
+
+    clearSilenceTimer();
+    clearConfirmationTimer();
+    clearCountdownTimer();
+    stopListening();
+    setAnswer(finalTranscript);
+    setConfirmingAnswer(true);
+    setSubmitCountdown(5);
+    setError(null);
+
+    confirmationTimerRef.current = window.setTimeout(() => {
+      confirmationTimerRef.current = null;
+      clearCountdownTimer();
+      setSubmitCountdown(0);
+      setConfirmingAnswer(false);
+      setAutoSending(true);
+      void submitAnswer(finalTranscript).finally(() => setAutoSending(false));
+    }, 5000);
+    countdownTimerRef.current = window.setInterval(() => {
+      setSubmitCountdown((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
+  }
+
   function startInterview() {
     setStarted(true);
     setError(null);
     setAnswer("");
+    setConfirmingAnswer(false);
+    setSubmitCountdown(0);
     setFocusWarnings(0);
     setLastWarning(null);
     lastSubmittedRef.current = "";
@@ -444,11 +428,14 @@ export function VoiceInterviewPanel({
 
   function endInterview() {
     stopListening();
+    clearConfirmationTimer();
+    clearCountdownTimer();
     stopCamera();
     stopMiraAudio();
-    window.speechSynthesis?.cancel();
     setStarted(false);
     setAnswer("");
+    setConfirmingAnswer(false);
+    setSubmitCountdown(0);
     setError(null);
     setQuestion(firstQuestion);
   }
@@ -469,6 +456,8 @@ export function VoiceInterviewPanel({
     submittingRef.current = true;
 
     clearSilenceTimer();
+    clearConfirmationTimer();
+    clearCountdownTimer();
     stopListening();
     setLoading(true);
     setError(null);
@@ -513,7 +502,7 @@ export function VoiceInterviewPanel({
 
       if (completedTurns >= maxTurns) {
         const closing =
-          "That completes this practice interview. I saved your feedback below.";
+          "That completes the interview. I saved your feedback below.";
         setQuestion(closing);
         speak(closing, () => {
           stopCamera();
@@ -524,16 +513,18 @@ export function VoiceInterviewPanel({
         return;
       }
 
-      setQuestion(nextQuestion);
+      const nextSpokenQuestion =
+        completedTurns === maxTurns - 1
+          ? `Final question. ${nextQuestion}`
+          : nextQuestion;
+      setQuestion(nextSpokenQuestion);
       setAnswer("");
-      speak(nextQuestion, () => {
+      speak(nextSpokenQuestion, () => {
         if (getSpeechRecognition()) startListening();
       });
 
       if (!response.ok && payload.error) {
-        setError(
-          `${payload.error} Add your AI key to enable live coaching.`,
-        );
+        setError(`${payload.error} Add your AI key to enable live coaching.`);
       }
     } catch (submitError) {
       setError(
@@ -556,9 +547,8 @@ export function VoiceInterviewPanel({
           </div>
           <h4 className="text-lg font-semibold">Live AI Interview</h4>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Start a live interview with {interviewerName}. She will ask a
-            question out loud, listen to your answer, then respond with feedback
-            and a follow-up.
+            Start a live interview with {interviewerName}. Answer questions and
+            receive real-time feedback.
           </p>
           <Button className="mt-5" type="button" onClick={startInterview}>
             Start AI interview
@@ -578,9 +568,11 @@ export function VoiceInterviewPanel({
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 {loading || autoSending
                   ? `${interviewerName} is thinking`
-                  : listening
-                    ? "Listening live"
-                    : "Live interview"}
+                  : confirmingAnswer
+                    ? "Answer captured"
+                    : listening
+                      ? "Listening live"
+                      : "Live interview"}
               </div>
               <h4 className="mx-auto max-w-2xl text-xl font-semibold">
                 {job.role} interview
@@ -601,18 +593,17 @@ export function VoiceInterviewPanel({
             </div>
 
             {lastWarning && (
-              <div className="absolute left-5 top-5 z-20 w-[min(calc(100%-2.5rem),360px)] rounded-2xl border border-red-200 bg-red-50/95 p-4 text-red-950 shadow-[0_14px_34px_rgba(153,27,27,0.14)] ring-1 ring-red-500/10 dark:border-red-900/60 dark:bg-red-950/70 dark:text-red-50">
+              <div className="absolute left-5 top-5 z-20 w-[min(calc(100%-2.5rem),360px)] rounded-xl border border-border bg-card/95 p-4 text-foreground shadow-[0_18px_44px_rgba(15,23,42,0.12)] ring-1 ring-black/5 backdrop-blur dark:ring-white/10">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 dark:bg-red-900/70 dark:text-red-100">
-                    <AlertTriangle className="h-4 w-4" />
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide">
-                      Integrity alert {focusWarnings}
+                    <p className="text-sm font-semibold">
+                      Focus notice {focusWarnings}
                     </p>
-                    <p className="mt-1 text-sm leading-5 text-red-700 dark:text-red-100/80">
-                      {lastWarning} Continued focus loss may invalidate this
-                      practice session.
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                      {lastWarning}
                     </p>
                   </div>
                 </div>
@@ -644,27 +635,44 @@ export function VoiceInterviewPanel({
                   <div
                     className={`absolute inset-0 rounded-full border border-primary/20 ${listening ? "animate-ping" : ""}`}
                   />
-                  {loading || autoSending ? (
+                  {loading || autoSending || confirmingAnswer ? (
                     <Loader2 className="h-12 w-12 animate-spin" />
                   ) : (
                     <Mic className="h-12 w-12" />
                   )}
                 </div>
-                <AnimatedQuestion text={question} />
+                <motion.div
+                  key={`${listening}-${loading}-${autoSending}-${confirmingAnswer}`}
+                  className="max-w-xl"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <h2 className="text-2xl font-semibold tracking-normal sm:text-3xl">
+                    {loading || autoSending
+                      ? "Preparing the next question"
+                      : confirmingAnswer
+                        ? "Answer captured"
+                        : listening
+                          ? "Your turn"
+                          : "Listen to Mira"}
+                  </h2>
+                </motion.div>
                 <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
                   {loading || autoSending
-                    ? "Analyzing your answer and preparing the next question..."
-                    : listening
-                      ? "Speak naturally. Mira submits once your answer is captured."
-                      : "Listening is paused."}
+                    ? "Mira is reviewing your answer and choosing the next question."
+                    : confirmingAnswer
+                      ? `Submitting in ${submitCountdown || 1} seconds.`
+                      : listening
+                        ? "Speak naturally. Mira will capture your answer automatically."
+                        : "The question is spoken aloud, just like a live interview."}
                 </p>
                 {listening && answer && (
                   <div className="mt-4 max-w-3xl rounded-2xl border border-primary/20 bg-card px-4 py-3 text-left text-sm shadow-sm">
                     <div className="mb-2 inline-flex items-center gap-2 text-primary">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-                    </span>
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+                      </span>
                       <span className="font-medium">Live transcript</span>
                     </div>
                     <p className="leading-6 text-muted-foreground">{answer}</p>
@@ -677,26 +685,34 @@ export function VoiceInterviewPanel({
       )}
       {started && !supported && (
         <p className="mt-2 text-sm text-muted-foreground">
-          Voice capture is unavailable in this browser. Typed practice still
-          works.
+          Voice capture is unavailable in this browser. Typed answers still
+          work.
         </p>
       )}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {!started && turns.length > 0 && (
-        <div className="mt-5 space-y-3">
-          <div>
-            <h4 className="text-base font-semibold">Practice feedback</h4>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Review the last turns and tighten one answer at a time.
+        <div className="mt-6 rounded-lg border border-border bg-background p-4 shadow-[0_14px_40px_rgba(15,23,42,0.045)]">
+          <div className="mb-4 flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase text-primary">
+                Interview summary
+              </p>
+              <h4 className="mt-1 text-lg font-semibold">Interview feedback</h4>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-muted-foreground">
+              Review the latest notes and improve the answer that needs the most
+              work.
             </p>
           </div>
-          {turns.slice(-3).map((turn, index) => (
-            <FeedbackCard
-              key={`${turn.question}-${index}`}
-              turn={turn}
-              index={index}
-            />
-          ))}
+          <div className="grid gap-3 xl:grid-cols-2">
+            {turns.slice(-4).map((turn, index) => (
+              <FeedbackCard
+                key={`${turn.question}-${index}`}
+                turn={turn}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
       )}
     </section>

@@ -1,6 +1,5 @@
 "use client";
 
-import { GripVertical } from "lucide-react";
 import { FitScoreBadge } from "@/components/fit-score-badge";
 import type { ApplicationJob } from "@/types/application";
 import { cn } from "@/utils/cn";
@@ -16,11 +15,11 @@ export function JobCard({
   return (
     <article
       className={cn(
-        "rounded-xl border p-4 shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition hover:border-primary/30 hover:shadow-[0_16px_36px_rgba(37,99,235,0.12)]",
+        "cursor-grab rounded-lg border p-4 shadow-[0_8px_24px_rgba(15,23,42,0.045)] transition hover:border-primary/30 hover:shadow-[0_16px_36px_rgba(37,99,235,0.12)] active:cursor-grabbing",
         statusSurfaceStyles[job.status],
         statusAccentStyles[job.status],
         isDragging &&
-          "rotate-[0.5deg] border-primary/50 shadow-[0_20px_44px_rgba(37,99,235,0.18)]",
+          "border-primary bg-card shadow-[0_24px_60px_rgba(37,99,235,0.20)]",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -29,9 +28,6 @@ export function JobCard({
           <p className="break-words text-sm text-muted-foreground">
             {job.company}
           </p>
-        </div>
-        <div className="rounded-md p-1 text-muted-foreground" aria-hidden="true">
-          <GripVertical className="h-4 w-4" />
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
