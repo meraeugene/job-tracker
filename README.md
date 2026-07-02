@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Tracker
+
+Job Tracker is a Next.js App Router job application workspace. Users upload a resume once, enter structured job details, prepare application materials, and track applications in a local-storage backed table or kanban board.
+
+## Stack
+
+- Next.js App Router, TypeScript, Tailwind CSS
+- shadcn/ui-inspired local components
+- Lucide React, Framer Motion
+- React Hook Form, Zod
+- TanStack Table
+- dnd-kit
+- Supabase database/auth/storage clients
+- Gemini API routes for resume parsing, application material generation, and voice interview coaching
+- PDF parsing dependency ready for resume ingestion
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`. The app redirects to `/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` and fill in real values:
 
-## Learn More
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+GEMINI_API_KEY
+GEMINI_MODEL
+GEMINI_TTS_MODEL
+GEMINI_TTS_VOICE
+JWT_SECRET
+NEXT_PUBLIC_APP_URL
+```
 
-To learn more about Next.js, take a look at the following resources:
+Never expose service-role keys in client code.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run `supabase/schema.sql` in Supabase SQL editor to create:
 
-## Deploy on Vercel
+- `profiles`
+- `resumes`
+- `jobs`
+- `application_outputs`
+- `notes`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Current Implementation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The UI uses mock data first so the product can be reviewed immediately. Built pages:
+
+- `/dashboard`
+- `/job-applications`
+- `/profile`
+- `/cover-letters`
+- `/interview-prep`
+- `/board`
+
+The API route `POST /api/prepare-application` accepts structured job details, a job description, and optional resume text. It calls Gemini when configured and otherwise returns local fallback materials so the tracker remains usable.
+
+The API route `POST /api/parse-resume` extracts structured profile sections from resume text with Gemini. Add `GEMINI_API_KEY` to `.env.local` before uploading resumes.
+
+The API route `POST /api/interview-voice` accepts a transcript answer and returns Gemini-powered interview feedback plus the next voice prompt. Add `GEMINI_API_KEY` to `.env.local` to enable live coaching.
+
+The API route `POST /api/speak` generates Mira's spoken interview prompts with Gemini TTS. Optional `GEMINI_TTS_MODEL` and `GEMINI_TTS_VOICE` values control the model and voice; the browser voice is used as a fallback if TTS is unavailable.
