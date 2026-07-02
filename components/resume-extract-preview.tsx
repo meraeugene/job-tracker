@@ -227,7 +227,7 @@ function skillGroups(value: string): SkillGroup[] {
     ) {
       add("Frontend", skill);
     } else if (
-      /\b(node\.?js|express\.?js|python|django|php|rest\s*apis?|websockets?|jwt|mysql|mongo(db)?|supabase|firebase|database)\b/i.test(
+      /\b(node\.?js|express\.?js|python|django|php|rest\s*apis?|websockets?|jwt|mysql|mongo(db)?|firebase|database)\b/i.test(
         skill,
       )
     ) {

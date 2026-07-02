@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Use this file as the starting `AGENTS.md` for a new system that follows the same architecture as Archivia: a Next.js App Router application with role-based route groups, Server Actions, Supabase data access, custom JWT cookie authentication, file storage, email notifications, and optional external ML/search services.
+Use this file as the starting `AGENTS.md` for a new system that follows the same architecture as Archivia: a Next.js App Router application with role-based route groups, Server Actions, custom JWT cookie authentication, file storage, email notifications, and optional external ML/search services.
 
 Replace every `{{PLACEHOLDER}}` before using it in a real project.
 
@@ -18,7 +18,7 @@ The system uses:
 
 - Next.js App Router for pages, layouts, API routes, and Server Components.
 - Server Actions for authenticated business operations.
-- Supabase for application data.
+- Application data stored through the configured project data layer.
 - Custom JWT cookie authentication.
 - Middleware and role-specific layouts for access control.
 - Cloudinary or another file service for uploads.
@@ -71,7 +71,7 @@ Notes:
 
 ## Auth And Access Control
 
-Authentication is custom unless this project explicitly adopts Supabase Auth or another provider.
+Authentication is custom unless this project explicitly adopts another provider.
 
 Expected flow:
 
@@ -109,11 +109,11 @@ When adding a new route, update:
 
 ## Data And Services
 
-Supabase clients:
+Data clients:
 
-- `utils/supabase/server.ts` for server runtime access.
-- `utils/supabase/client.ts` for browser access with anon or publishable keys only.
-- `utils/supabase/seedClient.ts` for seed scripts with service-role access.
+- Keep browser-safe clients separate from server-only clients.
+- Keep privileged data access server-side.
+- Document any configured external data provider here.
 
 External services:
 
@@ -126,10 +126,6 @@ External services:
 Environment variables:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
 JWT_SECRET
 
 {{FILE_STORAGE_ENV_KEYS}}
@@ -139,7 +135,7 @@ JWT_SECRET
 
 Important:
 
-- Never expose service-role keys in client code.
+- Never expose server-only keys in client code.
 - Avoid `NEXT_PUBLIC_` prefixes for secrets.
 - Keep `.env.local` out of version control.
 - Document every new environment variable in the README.
@@ -208,7 +204,7 @@ API route rules:
 ## Safety Notes
 
 - Do not commit `.env.local` or real secrets.
-- Do not import service-role clients into client components.
+- Do not import server-only clients into client components.
 - Do not weaken middleware or layout role checks when adding routes.
 - Do not trust role or user IDs passed from the browser.
 - Do not assume external services are available unless the README says how to run them.
@@ -255,5 +251,5 @@ Before using this template in a new system:
 - Update environment variable names.
 - Update external service URLs.
 - Update the role and workflow gate descriptions.
-- Confirm whether auth is custom JWT, Supabase Auth, or another provider.
+- Confirm whether auth is custom JWT or another provider.
 - Remove sections that do not apply.

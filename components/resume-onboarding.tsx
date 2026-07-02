@@ -5,7 +5,6 @@ import {
   FileCheck2,
   FileUp,
   Loader2,
-  Mic2,
   Volume2,
 } from "lucide-react";
 import { motion } from "framer-motion";

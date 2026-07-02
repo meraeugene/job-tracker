@@ -10,7 +10,6 @@ Job Tracker is a Next.js App Router job application workspace. Users upload a re
 - React Hook Form, Zod
 - TanStack Table
 - dnd-kit
-- Supabase database/auth/storage clients
 - Gemini API routes for resume parsing, application material generation, and interview coaching
 - ElevenLabs TTS for Mira's human voice
 - PDF parsing dependency ready for resume ingestion
@@ -29,10 +28,6 @@ Open `http://localhost:3000`. The app redirects to `/dashboard`.
 Copy `.env.example` to `.env.local` and fill in real values:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
 GEMINI_API_KEY
 GEMINI_MODEL
 ELEVENLABS_API_KEY
@@ -43,17 +38,11 @@ JWT_SECRET
 NEXT_PUBLIC_APP_URL
 ```
 
-Never expose service-role keys in client code.
+Keep server-only API keys out of client code.
 
-## Database
+## Data Storage
 
-Run `supabase/schema.sql` in Supabase SQL editor to create:
-
-- `profiles`
-- `resumes`
-- `jobs`
-- `application_outputs`
-- `notes`
+The current app stores workspace data locally in the browser through the app store. No external database setup is required.
 
 ## Current Implementation
 
