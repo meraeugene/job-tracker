@@ -137,6 +137,7 @@ export function VoiceInterviewPanel({
   const confirmationTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraActiveRef = useRef(false);
   const listeningWantedRef = useRef(false);
   const loadingRef = useRef(false);
   const submittingRef = useRef(false);
@@ -182,14 +183,14 @@ export function VoiceInterviewPanel({
 
   useEffect(() => {
     return () => {
+      stopListening();
       stopCamera();
-      listeningWantedRef.current = false;
       clearSilenceTimer();
       clearConfirmationTimer();
       clearCountdownTimer();
       stopMiraAudio();
     };
-  }, []);
+  }, [stopListening, stopCamera, stopMiraAudio]);
 
   function clearSilenceTimer() {
     if (silenceTimerRef.current) {
@@ -213,7 +214,7 @@ export function VoiceInterviewPanel({
     }
   }
 
-  function stopMiraAudio() {
+  const stopMiraAudio = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -224,7 +225,7 @@ export function VoiceInterviewPanel({
       URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = null;
     }
-  }
+  }, []);
 
   function speak(text = question, onEnd?: () => void) {
     stopMiraAudio();
@@ -233,7 +234,6 @@ export function VoiceInterviewPanel({
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
     const allVoices = window.speechSynthesis.getVoices();
     const enVoices = allVoices.filter((v) => v.lang.toLowerCase().includes("en"));
     const storedName = window.localStorage.getItem(miraVoiceKey);
@@ -248,12 +248,7 @@ export function VoiceInterviewPanel({
         voice = enVoices.find((v) => (v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk")) && v.name.toLowerCase().includes("female"));
       }
 
-      // 3. Any UK / GB English voice
-      if (!voice) {
-        voice = enVoices.find((v) => v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk"));
-      }
-
-      // 4. Any English female voice
+      // 3. Any English female voice
       if (!voice) {
         const femaleKeywords = ["zira", "samantha", "hazel", "karen", "salli", "veena", "moira"];
         for (const kw of femaleKeywords) {
@@ -265,13 +260,15 @@ export function VoiceInterviewPanel({
         }
       }
     }
+
+    // If no female voice is found (or still loading), remain silent and advance
     if (!voice) {
-      voice = enVoices[0];
+      onEnd?.();
+      return;
     }
 
-    if (voice) {
-      utterance.voice = voice;
-    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = voice;
 
     utterance.onend = () => {
       setSpeaking(false);
@@ -292,11 +289,18 @@ export function VoiceInterviewPanel({
       return;
     }
 
+    cameraActiveRef.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false,
       });
+
+      if (!cameraActiveRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -307,13 +311,16 @@ export function VoiceInterviewPanel({
     }
   }
 
-  function stopCamera() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+  const stopCamera = useCallback(() => {
+    cameraActiveRef.current = false;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  }
+  }, []);
 
   function startListening() {
     const Recognition = getSpeechRecognition();
@@ -400,12 +407,19 @@ export function VoiceInterviewPanel({
     setError(null);
   }
 
-  function stopListening() {
+  const stopListening = useCallback(() => {
     clearSilenceTimer();
     listeningWantedRef.current = false;
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        // Ignore any errors from aborting an already stopped instance
+      }
+      recognitionRef.current = null;
+    }
     setListening(false);
-  }
+  }, []);
 
   function confirmAnswer(finalTranscript: string) {
     if (submittingRef.current || confirmationTimerRef.current) return;

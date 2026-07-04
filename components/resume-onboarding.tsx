@@ -135,18 +135,14 @@ export function ResumeOnboarding({
     found = allEn.find((v) => (v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk")) && v.name.toLowerCase().includes("female"));
     if (found) return found.name;
 
-    // 3. Any UK / GB English voice
-    found = allEn.find((v) => v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk"));
-    if (found) return found.name;
-
-    // 4. Any English female voice
+    // 3. Any English female voice
     const femaleKeywords = ["zira", "samantha", "hazel", "karen", "salli", "veena", "moira"];
     for (const kw of femaleKeywords) {
       const target = allEn.find((v) => v.name.toLowerCase().includes(kw));
       if (target) return target.name;
     }
 
-    return allEn[0]?.name || "";
+    return "";
   }, []);
 
   useEffect(() => {
@@ -218,13 +214,42 @@ export function ResumeOnboarding({
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(text);
       const allVoices = window.speechSynthesis.getVoices();
-      const voice = allVoices.find((v) => v.name === voiceName) || 
-                    allVoices.find((v) => v.lang.toLowerCase().includes("en"));
-      if (voice) {
-        utterance.voice = voice;
+      const enVoices = allVoices.filter((v) => v.lang.toLowerCase().includes("en"));
+
+      // Find the specific voice requested, OR look for a female English voice fallback
+      let voice = enVoices.find((v) => v.name === voiceName);
+
+      if (!voice) {
+        // 1. Google UK English Female
+        voice = enVoices.find((v) => v.name.toLowerCase().includes("google uk english female") || v.name.toLowerCase().includes("google uk english"));
+
+        // 2. UK / GB English female
+        if (!voice) {
+          voice = enVoices.find((v) => (v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk")) && v.name.toLowerCase().includes("female"));
+        }
+
+        // 3. Any English female voice
+        if (!voice) {
+          const femaleKeywords = ["zira", "samantha", "hazel", "karen", "salli", "veena", "moira"];
+          for (const kw of femaleKeywords) {
+            const found = enVoices.find((v) => v.name.toLowerCase().includes(kw));
+            if (found) {
+              voice = found;
+              break;
+            }
+          }
+        }
       }
+
+      // If we don't have a female voice, remain silent and advance
+      if (!voice) {
+        onEnd?.();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.voice = voice;
 
       utterance.onend = () => {
         onEnd?.();
