@@ -72,7 +72,7 @@ function BoardColumn({
           ref={provided.innerRef}
           {...provided.droppableProps}
           className={cn(
-            "flex max-h-[calc(100vh-15rem)] min-h-[640px] min-w-0 flex-col rounded-lg border border-border bg-[#fbfcff] p-3 shadow-[0_8px_24px_rgba(15,23,42,0.035)] transition dark:bg-card",
+            "flex min-h-[640px] min-w-0 flex-col rounded-lg border border-border bg-[#fbfcff] p-3 shadow-[0_8px_24px_rgba(15,23,42,0.035)] transition dark:bg-card",
             snapshot.isDraggingOver &&
               "border-primary bg-primary/5 ring-2 ring-primary/20",
           )}
@@ -83,7 +83,7 @@ function BoardColumn({
               {jobs.length}
             </span>
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 space-y-3 pr-1">
             {jobs.map((job, index) => (
               <Draggable key={job.id} draggableId={job.id} index={index}>
                 {(dragProvided, dragSnapshot) => (

@@ -21,7 +21,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { JobSourceLogo } from "@/components/company-logo";
-import { FitScoreBadge } from "@/components/fit-score-badge";
 import { JobStatusBadge } from "@/components/job-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -361,18 +360,6 @@ export function JobApplicationsTable({ rows }: { rows?: ApplicationJob[] }) {
       },
       { accessorKey: "location", header: "Location" },
       {
-        accessorKey: "fitScore",
-        header: ({ column }) => (
-          <button
-            className="inline-flex items-center gap-1"
-            onClick={() => column.toggleSorting()}
-          >
-            Fit Score <ArrowUpDown className="h-3 w-3" />
-          </button>
-        ),
-        cell: ({ row }) => <FitScoreBadge score={row.original.fitScore} />,
-      },
-      {
         accessorKey: "dateSaved",
         header: ({ column }) => (
           <button
@@ -545,8 +532,7 @@ export function JobApplicationsTable({ rows }: { rows?: ApplicationJob[] }) {
                 </div>
                 <JobStatusBadge status={row.original.status} />
               </div>
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <FitScoreBadge score={row.original.fitScore} />
+              <div className="mt-3 flex items-center justify-end text-sm">
                 <JobActionsMenu
                   job={row.original}
                   onDelete={deleteJob}

@@ -72,9 +72,10 @@ function firstLine(text: string) {
 }
 
 function headerText(resume: ResumeProfile) {
+  const text = typeof resume.rawText === "string" ? resume.rawText : "";
   return (
-    resume.rawText.split(/\s+professional summary\s+/i)[0] ||
-    firstLine(resume.rawText)
+    text.split(/\s+professional summary\s+/i)[0] ||
+    firstLine(text)
   );
 }
 
@@ -174,14 +175,16 @@ function contactItems(resume: ResumeProfile): ContactItem[] {
   ].filter((item): item is ContactItem => Boolean(item));
 }
 
-function commaItems(value: string) {
+function commaItems(value: string | undefined | null) {
+  if (typeof value !== "string") return [];
   return value
     .split(/,|\n/)
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
-function splitListItems(value: string) {
+function splitListItems(value: string | undefined | null) {
+  if (typeof value !== "string") return [];
   return value
     .split(/,|\n|;/)
     .map((item) => item.trim())
@@ -291,9 +294,10 @@ function projectDescription(project: string) {
 }
 
 function sectionItems(
-  value: string,
+  value: string | undefined | null,
   mode: "experience" | "projects" | "certifications",
 ) {
+  if (typeof value !== "string") return [];
   const normalized = value
     .replace(/•/g, "\n")
     .replace(/\s+-\s+/g, "\n")
@@ -329,7 +333,8 @@ function sectionItems(
 const experienceHeaderPattern =
   /([A-Z][A-Za-z /&.-]+(?:Intern|Developer|Engineer|Designer|Manager|Analyst|Specialist)\s*\|)/;
 
-function cleanResumeText(value: string) {
+function cleanResumeText(value: string | undefined | null) {
+  if (typeof value !== "string") return "";
   return value
     .replace(/â€¢/g, "•")
     .replace(/â€“/g, "–")
@@ -338,7 +343,7 @@ function cleanResumeText(value: string) {
     .trim();
 }
 
-function splitExperienceSegments(value: string) {
+function splitExperienceSegments(value: string | undefined | null) {
   const normalized = cleanResumeText(value)
     .replace(/•/g, "\n• ")
     .replace(/\s+-\s+/g, "\n- ")
@@ -398,7 +403,8 @@ function isUsefulExperienceBullet(value: string) {
   return true;
 }
 
-function parseExperience(value: string): ExperienceEntry[] {
+function parseExperience(value: string | undefined | null): ExperienceEntry[] {
+  if (typeof value !== "string") return [];
   const segments = splitExperienceSegments(value);
   const entries: ExperienceEntry[] = [];
 
@@ -563,11 +569,12 @@ export function ResumeExtractPreview({
     "certifications",
   );
   const manualProjects = resume.manualProjects ?? [];
+  const educationText = typeof resume.sections.education === "string" ? resume.sections.education : "";
   const coursework =
-    resume.sections.education.match(
+    educationText.match(
       /Relevant Coursework:\s*([\s\S]+)$/i,
     )?.[1] ?? "";
-  const educationMain = resume.sections.education
+  const educationMain = educationText
     .replace(/Relevant Coursework:\s*[\s\S]+$/i, "")
     .trim();
 
@@ -579,7 +586,7 @@ export function ResumeExtractPreview({
         </div>
       )}
 
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-white">

@@ -32,6 +32,7 @@ type ApplicationStore = {
   updateJobStatus: (id: string, status: JobStatus) => void;
   deleteJob: (id: string) => void;
   removeResumeAndData: () => void;
+  loadStorage: () => void;
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -114,12 +115,24 @@ function loadInitialState() {
 const initialState = loadInitialState();
 
 export const useApplicationStore = create<ApplicationStore>((set, get) => ({
-  jobs: initialState.jobs,
-  storageLoaded: true,
-  appliedJobs: initialState.appliedJobs,
-  resume: initialState.resume,
+  jobs: initialJobs,
+  storageLoaded: false,
+  appliedJobs: appliedJobs(initialJobs),
+  resume: null,
   resumeParsing: false,
   resumeError: null,
+
+  loadStorage: () => {
+    if (get().storageLoaded) return;
+    const jobs = normalizeTrackedJobs(readJson(jobsKey, initialJobs));
+    const resume = normalizeStoredResume(readJson(resumeKey, null));
+    set({
+      jobs,
+      resume,
+      appliedJobs: appliedJobs(jobs),
+      storageLoaded: true,
+    });
+  },
 
   setJobs: (jobs) => {
     const nextJobs = normalizeTrackedJobs(jobs);

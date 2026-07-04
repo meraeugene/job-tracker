@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, FileCheck2, FileUp, Loader2, Volume2 } from "lucide-react";
+import { ArrowRight, FileCheck2, FileUp, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -22,27 +22,9 @@ const introMessages = [
 ];
 
 const splashMessage =
-  "Welcome to Mira. Choose the voice you like, preview it if you want, then click get started.";
+  "Welcome to Mira.";
 const introPill = "Your application prep friend";
 const miraVoiceKey = "job-tracker:mira-voice-id";
-const defaultMiraVoiceId = "XrExE9yKIg1WjnnlVkGX";
-const miraVoiceOptions = [
-  {
-    id: "XrExE9yKIg1WjnnlVkGX",
-    name: "Matilda",
-    tone: "Warm young voice",
-  },
-  {
-    id: "EXAVITQu4vr4xnSDxMaL",
-    name: "Sarah",
-    tone: "Soft young voice",
-  },
-  {
-    id: "pFZP5JQG7iQjIQuC4Bku",
-    name: "Lily",
-    tone: "Bright textured voice",
-  },
-];
 
 function AnimatedIntroText({ text }: { text: string }) {
   const words = text.split(" ");
@@ -50,7 +32,7 @@ function AnimatedIntroText({ text }: { text: string }) {
   return (
     <motion.h1
       key={text}
-      className="mx-auto max-w-5xl text-balance text-4xl font-semibold leading-tight tracking-normal sm:text-6xl"
+      className="mx-auto max-w-5xl flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-3 text-balance text-4xl font-semibold leading-tight tracking-normal sm:text-6xl"
       initial="hidden"
       animate="visible"
       variants={{
@@ -62,24 +44,58 @@ function AnimatedIntroText({ text }: { text: string }) {
         },
       }}
     >
-      {words.map((word, index) => (
-        <motion.span
-          key={`${word}-${index}`}
-          className={`inline-block ${
-            word.replace(/[^a-z]/gi, "").toLowerCase() === "mira"
-              ? "text-primary"
-              : ""
-          }`}
-          variants={{
-            hidden: { opacity: 0, y: 14, filter: "blur(5px)" },
-            visible: { opacity: 1, y: 0, filter: "blur(0px)" },
-          }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-          {word}
-          {index < words.length - 1 ? "\u00a0" : ""}
-        </motion.span>
-      ))}
+      {words.map((word, index) => {
+        const cleanWord = word.replace(/[^a-z]/gi, "").toLowerCase();
+        const isMira = cleanWord === "mira";
+        if (isMira) {
+          // Extract trailing punctuation (like commas or periods) to keep punctuation styling
+          const punctuation = word.slice(word.toLowerCase().indexOf("mira") + 4);
+
+          return (
+            <motion.span
+              key={`${word}-${index}`}
+              className="inline-flex items-center mr-2 sm:mr-2.5"
+              variants={{
+                hidden: { opacity: 0, y: 14, filter: "blur(5px)" },
+                visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+              }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <img
+                src="/Mira.png"
+                alt="M"
+                className="h-22 w-22 object-contain"
+                style={{
+                  animation: "splash-logo-reveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+                }}
+              />
+              <span
+                className="text-5xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
+                style={{
+                  animation: "splash-text-slide 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both",
+                }}
+              >
+                ira{punctuation}
+              </span>
+            </motion.span>
+          );
+        }
+
+        return (
+          <motion.span
+            key={`${word}-${index}`}
+            className="inline-block"
+            variants={{
+              hidden: { opacity: 0, y: 14, filter: "blur(5px)" },
+              visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+            }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            {word}
+            {index < words.length - 1 ? "\u00a0" : ""}
+          </motion.span>
+        );
+      })}
     </motion.h1>
   );
 }
@@ -103,10 +119,62 @@ export function ResumeOnboarding({
   const [showSplash, setShowSplash] = useState(!embedded);
   const [introComplete, setIntroComplete] = useState(embedded);
   const [mounted, setMounted] = useState(false);
-  const [selectedVoiceId, setSelectedVoiceId] = useState(defaultMiraVoiceId);
+  const [synthesisVoices, setSynthesisVoices] = useState<SpeechSynthesisVoice[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const splashSpokenRef = useRef(false);
+
+  const getDefaultVoiceName = useCallback((voicesList: SpeechSynthesisVoice[]) => {
+    const allEn = voicesList.filter((v) => v.lang.toLowerCase().includes("en"));
+
+    // 1. Google UK English Female
+    let found = allEn.find((v) => v.name.toLowerCase().includes("google uk english female") || v.name.toLowerCase().includes("google uk english"));
+    if (found) return found.name;
+
+    // 2. UK / GB English female
+    found = allEn.find((v) => (v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk")) && v.name.toLowerCase().includes("female"));
+    if (found) return found.name;
+
+    // 3. Any UK / GB English voice
+    found = allEn.find((v) => v.lang.toLowerCase().includes("gb") || v.lang.toLowerCase().includes("uk"));
+    if (found) return found.name;
+
+    // 4. Any English female voice
+    const femaleKeywords = ["zira", "samantha", "hazel", "karen", "salli", "veena", "moira"];
+    for (const kw of femaleKeywords) {
+      const target = allEn.find((v) => v.name.toLowerCase().includes(kw));
+      if (target) return target.name;
+    }
+
+    return allEn[0]?.name || "";
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    const loadVoices = () => {
+      const allVoices = window.speechSynthesis.getVoices();
+      const enVoices = allVoices.filter((v) =>
+        v.lang.toLowerCase().includes("en"),
+      );
+      setSynthesisVoices(enVoices);
+
+      // Auto-select and save the UK English Female voice to localStorage
+      const defaultVoice = getDefaultVoiceName(enVoices);
+      if (defaultVoice && !window.localStorage.getItem(miraVoiceKey)) {
+        window.localStorage.setItem(miraVoiceKey, defaultVoice);
+      }
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, [getDefaultVoiceName]);
 
   useEffect(() => {
     if (!redirectWhenReady || !resume) return;
@@ -118,12 +186,13 @@ export function ResumeOnboarding({
   }, []);
 
   const activeVoiceId = mounted
-    ? (miraVoiceOptions.find(
-        (voice) => voice.id === window.localStorage.getItem(miraVoiceKey),
-      )?.id ?? selectedVoiceId)
-    : selectedVoiceId;
+    ? (window.localStorage.getItem(miraVoiceKey) ?? getDefaultVoiceName(synthesisVoices))
+    : "";
 
   const stopMiraAudio = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     audioRef.current?.pause();
     audioRef.current = null;
     if (audioUrlRef.current) {
@@ -138,44 +207,33 @@ export function ResumeOnboarding({
     };
   }, [stopMiraAudio]);
 
-  function chooseVoice(voiceId: string) {
-    setSelectedVoiceId(voiceId);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(miraVoiceKey, voiceId);
-    }
-  }
+
 
   const playMiraVoice = useCallback(
-    (text: string, voiceId: string, onEnd?: () => void) => {
+    (text: string, voiceName: string, onEnd?: () => void) => {
       stopMiraAudio();
 
-      void fetch("/api/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voiceId }),
-      })
-        .then(async (response) => {
-          if (!response.ok) throw new Error("Mira voice failed.");
-          return response.blob();
-        })
-        .then((blob) => {
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          audioRef.current = audio;
-          audioUrlRef.current = url;
-          const releaseAudio = () => {
-            audioRef.current = null;
-            URL.revokeObjectURL(url);
-            if (audioUrlRef.current === url) {
-              audioUrlRef.current = null;
-            }
-            onEnd?.();
-          };
-          audio.onended = releaseAudio;
-          audio.onerror = releaseAudio;
-          return audio.play();
-        })
-        .catch(() => onEnd?.());
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        onEnd?.();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      const allVoices = window.speechSynthesis.getVoices();
+      const voice = allVoices.find((v) => v.name === voiceName) || 
+                    allVoices.find((v) => v.lang.toLowerCase().includes("en"));
+      if (voice) {
+        utterance.voice = voice;
+      }
+
+      utterance.onend = () => {
+        onEnd?.();
+      };
+      utterance.onerror = () => {
+        onEnd?.();
+      };
+
+      window.speechSynthesis.speak(utterance);
     },
     [stopMiraAudio],
   );
@@ -216,7 +274,7 @@ export function ResumeOnboarding({
 
     const fallbackTimer = window.setTimeout(
       advanceIntro,
-      Math.max(4200, introMessages[introStep].split(/\s+/).length * 430),
+      Math.max(8500, introMessages[introStep].split(/\s+/).length * 750),
     );
 
     playMiraVoice(introMessages[introStep], activeVoiceId, advanceIntro);
@@ -237,14 +295,33 @@ export function ResumeOnboarding({
   ]);
 
   useEffect(() => {
-    if (embedded || resume || !showSplash || splashSpokenRef.current) {
+    if (embedded || resume || !showSplash || !mounted || splashSpokenRef.current) {
       return;
     }
 
     splashSpokenRef.current = true;
-    playMiraVoice(splashMessage, activeVoiceId);
+
+    let advanced = false;
+    const advanceSplash = () => {
+      if (advanced) return;
+      advanced = true;
+      setShowSplash(false);
+    };
+
+    // Fallback timer in case speech synthesis fails or is blocked
+    const fallbackTimer = window.setTimeout(
+      advanceSplash,
+      5000
+    );
+
+    // Speak introduction automatically once onboarding mounts and splash overlay fades out
+    const speechDelay = window.setTimeout(() => {
+      playMiraVoice(splashMessage, activeVoiceId, advanceSplash);
+    }, 2000);
 
     return () => {
+      window.clearTimeout(speechDelay);
+      window.clearTimeout(fallbackTimer);
       stopMiraAudio();
     };
   }, [
@@ -254,6 +331,7 @@ export function ResumeOnboarding({
     activeVoiceId,
     showSplash,
     stopMiraAudio,
+    mounted,
   ]);
 
   async function upload(file: File | undefined) {
@@ -327,55 +405,6 @@ export function ResumeOnboarding({
           </motion.div>
 
           <AnimatedIntroText text="Welcome to Mira" />
-
-          <motion.div
-            className="mx-auto mt-7 flex w-full max-w-sm items-center gap-2"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.22 }}
-          >
-            <label className="sr-only" htmlFor="mira-voice">
-              Mira voice
-            </label>
-            <select
-              id="mira-voice"
-              className="h-10 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              value={activeVoiceId}
-              onChange={(event) => chooseVoice(event.target.value)}
-            >
-              {miraVoiceOptions.map((voice) => (
-                <option key={voice.id} value={voice.id}>
-                  {voice.name} - {voice.tone}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="icon"
-              variant="secondary"
-              type="button"
-              aria-label="Preview Mira voice"
-              onClick={() => playMiraVoice(splashMessage, activeVoiceId)}
-            >
-              <Volume2 className="h-4 w-4" />
-            </Button>
-          </motion.div>
-
-          <motion.div
-            className="mt-8"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <Button
-              className="h-12 rounded-xl px-6 text-base"
-              onClick={() => {
-                setShowSplash(false);
-              }}
-            >
-              Get started
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </motion.div>
         </div>
       </main>
     );
@@ -397,9 +426,8 @@ export function ResumeOnboarding({
             {introMessages.map((message, index) => (
               <span
                 key={message}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === introStep ? "w-10 bg-primary" : "w-2 bg-muted"
-                }`}
+                className={`h-1.5 rounded-full transition-all ${index === introStep ? "w-10 bg-primary" : "w-2 bg-muted"
+                  }`}
               />
             ))}
           </div>
@@ -413,14 +441,34 @@ export function ResumeOnboarding({
       className={`flex items-center justify-center bg-background px-4 py-10 pb-28 ${embedded ? "min-h-[calc(100vh-8rem)]" : "min-h-screen"}`}
     >
       <div className="w-full max-w-3xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
-            Start with your resume
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Upload your resume once. Mira is excited to get to know you.
-          </p>
+
+        <div>
+          <div className="flex items-center  overflow-hidden justify-center ">
+            <img
+              src="/Mira.png"
+              alt="M"
+              className="h-24 w-24 object-contain"
+              style={{
+                animation: "splash-logo-reveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+              }}
+            />
+            <span
+              className="text-5xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
+              style={{
+                animation: "splash-text-slide 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both",
+              }}
+            >
+              ira
+            </span>
+          </div>
+
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
+              Start with your resume
+            </h1>
+          </div>
         </div>
+
 
         <Card className="rounded-xl border-[#dfe5ef] shadow-[0_22px_56px_rgba(15,23,42,0.08)] dark:border-border">
           <CardContent className="p-5 sm:p-7">
@@ -436,11 +484,10 @@ export function ResumeOnboarding({
                 setDragging(false);
                 void upload(event.dataTransfer.files?.[0]);
               }}
-              className={`flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center transition ${
-                dragging
-                  ? "border-primary bg-primary/10"
-                  : "border-[#dfe5ef] bg-[#f7f9fd] hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_18px_44px_rgba(0,132,255,0.16)] dark:border-border dark:bg-muted"
-              }`}
+              className={`flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center transition ${dragging
+                ? "border-primary bg-primary/10"
+                : "border-[#dfe5ef] bg-[#f7f9fd] hover:-translate-y-0.5 hover:border-primary hover:shadow-[0_18px_44px_rgba(0,132,255,0.16)] dark:border-border dark:bg-muted"
+                }`}
             >
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-card text-primary shadow-sm">
                 {resumeParsing ? (

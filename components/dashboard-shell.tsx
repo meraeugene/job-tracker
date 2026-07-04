@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/app-sidebar";
 import { useApplicationStore } from "@/hooks/use-application-store";
 import { cn } from "@/utils/cn";
@@ -10,16 +10,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { resume } = useApplicationStore();
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!resume) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !resume) {
       router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
     }
-  }, [pathname, resume, router]);
+  }, [mounted, pathname, resume, router]);
 
-  if (!resume) {
+  if (!mounted || !resume) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground animate-pulse">
         <AppHeader />
       </div>
     );

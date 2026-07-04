@@ -1,6 +1,5 @@
 "use client";
 
-import { FitScoreBadge } from "@/components/fit-score-badge";
 import type { ApplicationJob } from "@/types/application";
 import { cn } from "@/utils/cn";
 import { statusAccentStyles, statusSurfaceStyles } from "@/utils/status-styles";
@@ -29,9 +28,6 @@ export function JobCard({
             {job.company}
           </p>
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <FitScoreBadge score={job.fitScore} />
       </div>
     </article>
   );

@@ -2,17 +2,26 @@
 
 import {
   ArrowLeft,
+  Briefcase,
+  Building2,
+  Calendar,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
+  FileText,
+  Globe,
+  Laptop,
   MailPlus,
   Loader2,
   Mail,
+  MapPin,
+  Network,
   RefreshCcw,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/empty-state";
-import { FitScoreBadge } from "@/components/fit-score-badge";
 import { JobStatusBadge } from "@/components/job-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,6 +126,11 @@ export function CoverLettersWorkspace() {
   const [cooldown, setCooldown] = useState(0);
   const [copied, setCopied] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
+  const [descOpen, setDescOpen] = useState(false);
+
+  useEffect(() => {
+    setDescOpen(false);
+  }, [selectedId]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -226,7 +240,6 @@ export function CoverLettersWorkspace() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <FitScoreBadge score={job.fitScore} />
                   <JobStatusBadge status={job.status} />
                 </div>
               </button>
@@ -268,7 +281,6 @@ export function CoverLettersWorkspace() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <FitScoreBadge score={selectedJob.fitScore} />
                 <JobStatusBadge status={selectedJob.status} />
               </div>
               <CardTitle>{selectedJob.role}</CardTitle>
@@ -309,30 +321,114 @@ export function CoverLettersWorkspace() {
             </div>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 p-5">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-border  p-3">
-                <p className="text-xs font-medium uppercase text-muted-foreground">
-                  Company
-                </p>
-                <p className="mt-1 font-medium">{selectedJob.company}</p>
-              </div>
-              <div className="rounded-lg border border-border  p-3">
-                <p className="text-xs font-medium uppercase text-muted-foreground">
-                  Match
-                </p>
-                <div className="mt-1">
-                  <FitScoreBadge score={selectedJob.fitScore} />
+            {(() => {
+              const locationString = selectedJob.location || "";
+              let workSetup = "On-site";
+              let locationPart = locationString;
+
+              if (locationString.includes(" - ")) {
+                const parts = locationString.split(" - ");
+                workSetup = parts[0];
+                locationPart = parts.slice(1).join(" - ");
+              } else if (["Remote", "Hybrid", "On-site"].includes(locationString)) {
+                workSetup = locationString;
+                locationPart = "";
+              }
+
+              const workSetupClean = workSetup.trim().toLowerCase();
+              let WorkIcon = Building2;
+              if (workSetupClean.includes("remote")) {
+                WorkIcon = Laptop;
+              } else if (workSetupClean.includes("hybrid")) {
+                WorkIcon = Network;
+              }
+
+              return (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">
+                        Company
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 font-medium break-words">
+                        <Briefcase className="h-4 w-4 text-primary shrink-0" />
+                        <span>{selectedJob.company}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">
+                        Work Setup
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 font-medium break-words">
+                        <WorkIcon className="h-4 w-4 text-primary shrink-0" />
+                        <span>{workSetup}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">
+                        Location
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 font-medium break-words">
+                        <MapPin className="h-4 w-4 text-primary shrink-0" />
+                        <span>{locationPart || "N/A"}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">
+                        Platform
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 font-medium break-words">
+                        <Globe className="h-4 w-4 text-primary shrink-0" />
+                        <span>{selectedJob.platform}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">
+                        Date Saved
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 font-medium break-words">
+                        <Calendar className="h-4 w-4 text-primary shrink-0" />
+                        <span>{selectedJob.dateSaved}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-muted/20 overflow-hidden transition-all duration-200">
+                    <button
+                      type="button"
+                      onClick={() => setDescOpen(!descOpen)}
+                      className="flex w-full items-center justify-between p-4 text-left font-medium hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-semibold tracking-wide text-muted-foreground">
+                        <FileText className="h-4 w-4 text-primary" />
+                        JOB DESCRIPTION
+                      </span>
+                      {descOpen ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {descOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                        >
+                          <div className="border-t border-border p-4 bg-card">
+                            <p className="text-sm leading-6 text-foreground break-words whitespace-pre-wrap">
+                              {selectedJob.jobDescription}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-lg border border-border  p-3">
-                <p className="text-xs font-medium uppercase text-muted-foreground">
-                  Draft
-                </p>
-                <p className="mt-1 font-medium">
-                  {selectedJob.coverLetter ? "Saved" : "Empty"}
-                </p>
-              </div>
-            </div>
+              );
+            })()}
             {generating ? (
               <CoverLetterSkeleton />
             ) : letter ? (

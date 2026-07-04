@@ -3,10 +3,9 @@
 import { Loader2, MessageSquareText, Video } from "lucide-react";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { EmptyState } from "@/components/empty-state";
-import { FitScoreBadge } from "@/components/fit-score-badge";
-import { InterviewPrepTimeline } from "@/components/interview-prep-timeline";
 import { JobStatusBadge } from "@/components/job-status-badge";
+import { EmptyState } from "@/components/empty-state";
+import { InterviewPrepTimeline } from "@/components/interview-prep-timeline";
 import { useApplicationStore } from "@/hooks/use-application-store";
 
 function SelectionLoading() {
@@ -81,7 +80,6 @@ export function InterviewPrepWorkspace() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <FitScoreBadge score={job.fitScore} />
                   <JobStatusBadge status={job.status} />
                 </div>
               </button>

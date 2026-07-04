@@ -5,9 +5,10 @@ import {
   BriefcaseBusiness,
   Building2,
   Check,
+  GitMerge,
   Link2,
-  Loader2,
   MapPin,
+  Wifi,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -319,6 +320,8 @@ export function PrepareApplicationForm() {
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 {(["Remote", "Hybrid", "On-site"] as const).map((mode) => {
                   const active = selectedWorkMode === mode;
+                  const ModeIcon =
+                    mode === "Remote" ? Wifi : mode === "Hybrid" ? GitMerge : Building2;
 
                   return (
                     <button
@@ -338,8 +341,9 @@ export function PrepareApplicationForm() {
                       }
                     >
                       <span>
-                        <span className="block text-sm font-semibold">
-                          {mode}
+                        <span className="mb-2 flex items-center gap-1.5">
+                          <ModeIcon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
+                          <span className="text-sm font-semibold">{mode}</span>
                         </span>
                         <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                           {mode === "Remote"
@@ -465,22 +469,30 @@ export function PrepareApplicationForm() {
             </p>
           )}
           <motion.div whileTap={{ scale: 0.98 }}>
-            <Button
-              type="submit"
-              className="relative h-12 w-full overflow-hidden rounded-xl text-base sm:flex"
-              disabled={loading || !resume}
-            >
-              {loading && (
-                <span
-                  className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-500"
-                  style={{ width: loadingProgress() }}
-                />
-              )}
-              <span className="relative inline-flex items-center gap-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {loading ? loadingMessages[loadingStep] : "Save Job Application"}
-              </span>
-            </Button>
+            {loading ? (
+              <div className="relative flex h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-blue-600 shadow-[0_8px_28px_rgba(37,99,235,0.35)]">
+                <span className="absolute inset-0 bg-[length:200%_100%] bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_1.6s_ease-in-out_infinite]" />
+                <span className="relative flex items-center gap-2.5 text-white">
+                  <span className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80 [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80 [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80" />
+                  </span>
+                  <span className="text-sm font-semibold tracking-wide">
+                    {loadingMessages[loadingStep]}
+                  </span>
+                </span>
+                <span className="absolute bottom-0 left-0 h-0.5 bg-white/40 transition-all duration-700 ease-out" style={{ width: loadingProgress() }} />
+              </div>
+            ) : (
+              <Button
+                type="submit"
+                className="h-14 w-full rounded-xl text-base font-semibold shadow-[0_8px_24px_rgba(37,99,235,0.25)] hover:shadow-[0_12px_32px_rgba(37,99,235,0.40)] transition-shadow"
+                disabled={!resume}
+              >
+                Save Job Application
+              </Button>
+            )}
           </motion.div>
         </form>
       </CardContent>
