@@ -2,7 +2,7 @@
 
 import { Loader2, ShieldCheck, X } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ApplicationJob, InterviewStage } from "@/types/application";
 import { cn } from "@/utils/cn";
@@ -15,6 +15,7 @@ type SpeechRecognition = {
   lang: string;
   start: () => void;
   stop: () => void;
+  abort: () => void;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onend: (() => void) | null;
   onerror: ((event: { error?: string }) => void) | null;
@@ -181,16 +182,6 @@ export function VoiceInterviewPanel({
     };
   }, [started]);
 
-  useEffect(() => {
-    return () => {
-      stopListening();
-      stopCamera();
-      clearSilenceTimer();
-      clearConfirmationTimer();
-      clearCountdownTimer();
-      stopMiraAudio();
-    };
-  }, [stopListening, stopCamera, stopMiraAudio]);
 
   function clearSilenceTimer() {
     if (silenceTimerRef.current) {
@@ -577,6 +568,18 @@ export function VoiceInterviewPanel({
       submittingRef.current = false;
     }
   }
+
+  useEffect(() => {
+    return () => {
+      stopListening();
+      stopCamera();
+      clearSilenceTimer();
+      clearConfirmationTimer();
+      clearCountdownTimer();
+      stopMiraAudio();
+    };
+  }, [stopListening, stopCamera, stopMiraAudio]);
+
 
   return (
     <section className="mt-6">
