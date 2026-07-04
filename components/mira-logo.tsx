@@ -20,10 +20,10 @@ export function MiraLogo({
         alt="M"
         className={cn(
           "object-contain",
-          compact ? "h-9 w-9" : "h-9 w-9",
+          compact ? "h-9 w-9" : "h-7 w-7 sm:h-9 sm:w-9",
         )}
       />
-      {!compact && <span className="text-xl text-blue-600">ira</span>}
+      {!compact && <span className="text-lg text-blue-600 sm:text-xl">ira</span>}
     </span>
   );
 }

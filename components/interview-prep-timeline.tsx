@@ -253,9 +253,8 @@ export function InterviewPrepTimeline({
           {stages.map((item, index) => (
             <button
               key={item.title}
-              className={`h-2 flex-1 rounded-full transition ${
-                index <= phaseIndex ? "bg-primary" : "bg-muted"
-              }`}
+              className={`h-2 flex-1 rounded-full transition ${index <= phaseIndex ? "bg-primary" : "bg-muted"
+                }`}
               aria-label={`Go to ${item.title}`}
               onClick={() => selectPhase(index)}
             />
@@ -287,11 +286,11 @@ export function InterviewPrepTimeline({
                       Card {cardIndex + 1} / {stage.questions.length}
                     </span>
                   </div>
-                  <div className="relative px-14">
+                  <div className="relative px-10 sm:px-14">
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="absolute left-0 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full p-0"
+                      className="absolute left-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
                       disabled={cardIndex === 0}
                       aria-label="Previous card"
                       onClick={() => selectCard(Math.max(0, cardIndex - 1))}
@@ -300,7 +299,7 @@ export function InterviewPrepTimeline({
                     </Button>
                     <Button
                       size="sm"
-                      className="absolute right-0 top-1/2 z-10 h-11 w-11 -translate-y-1/2 rounded-full p-0"
+                      className="absolute right-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
                       disabled={cardIndex === stage.questions.length - 1}
                       aria-label="Next card"
                       onClick={() =>
@@ -315,7 +314,7 @@ export function InterviewPrepTimeline({
                       <motion.button
                         key={`${phaseIndex}-${cardIndex}`}
                         type="button"
-                        className="relative min-h-[380px] w-full rounded-2xl border border-blue-100 bg-white p-10 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_30px_80px_rgba(37,99,235,0.16)] focus-visible:ring-2 focus-visible:ring-primary/25"
+                        className="relative min-h-[320px] w-full overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_30px_80px_rgba(37,99,235,0.16)] focus-visible:ring-2 focus-visible:ring-primary/25 sm:min-h-[380px] sm:p-10"
                         initial={{
                           opacity: 0,
                           x: direction * 42,
@@ -349,27 +348,27 @@ export function InterviewPrepTimeline({
                         }
                       >
                         <div
-                          className="absolute inset-0 grid place-items-center p-10 [backface-visibility:hidden]"
+                          className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10 [backface-visibility:hidden]"
                           style={{ transform: "rotateY(0deg)" }}
                         >
                           <div>
-                            <p className="mb-6 text-xs font-semibold uppercase text-primary">
+                            <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
                               Question
                             </p>
-                            <p className="mx-auto max-w-3xl text-3xl font-semibold leading-tight text-foreground">
+                            <p className="mx-auto max-w-3xl text-base font-semibold leading-snug text-foreground sm:text-2xl sm:leading-tight md:text-3xl">
                               {question}
                             </p>
                           </div>
                         </div>
                         <div
-                          className="absolute inset-0 grid place-items-center p-10 [backface-visibility:hidden]"
+                          className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10 [backface-visibility:hidden]"
                           style={{ transform: "rotateY(180deg)" }}
                         >
                           <div>
-                            <p className="mb-6 text-xs font-semibold uppercase text-primary">
+                            <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
                               Answer
                             </p>
-                            <p className="mx-auto max-w-3xl text-lg font-medium leading-8 text-foreground sm:text-xl">
+                            <p className="mx-auto max-w-3xl text-sm font-medium leading-6 text-foreground sm:text-lg sm:leading-8 md:text-xl">
                               {answer}
                             </p>
                           </div>

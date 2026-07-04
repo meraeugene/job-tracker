@@ -518,29 +518,43 @@ export function JobApplicationsTable({ rows }: { rows?: ApplicationJob[] }) {
           </table>
         </div>
         <div className="grid gap-3 md:hidden">
-          {table.getRowModel().rows.map((row) => (
-            <div
-              key={row.original.id}
-              className="rounded-xl border border-border bg-card p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{row.original.role}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {row.original.company} - {row.original.platform}
-                  </p>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <div
+                key={row.original.id}
+                className="rounded-xl border border-border bg-card p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold sm:text-base">{row.original.role}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">
+                      {row.original.company} · {row.original.platform}
+                    </p>
+                  </div>
+                  <JobStatusBadge status={row.original.status} />
                 </div>
-                <JobStatusBadge status={row.original.status} />
+                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {row.original.location && (
+                      <span className="truncate">{row.original.location}</span>
+                    )}
+                    {row.original.dateSaved && (
+                      <span>{row.original.dateSaved}</span>
+                    )}
+                  </div>
+                  <JobActionsMenu
+                    job={row.original}
+                    onDelete={deleteJob}
+                    onUpdate={updateJob}
+                  />
+                </div>
               </div>
-              <div className="mt-3 flex items-center justify-end text-sm">
-                <JobActionsMenu
-                  job={row.original}
-                  onDelete={deleteJob}
-                  onUpdate={updateJob}
-                />
-              </div>
+            ))
+          ) : (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              Add your first job application from the dashboard.
             </div>
-          ))}
+          )}
         </div>
         <div className="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">

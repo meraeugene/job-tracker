@@ -40,13 +40,13 @@ export function SplashScreen() {
           <img
             src="/Mira.png"
             alt="M"
-            className="h-24 w-24 object-contain"
+            className="h-16 w-16 object-contain sm:h-24 sm:w-24"
             style={{
               animation: "splash-logo-reveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both",
             }}
           />
           <span
-            className="text-5xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
+            className="text-3xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef] sm:text-5xl"
             style={{
               animation: "splash-text-slide 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both",
             }}

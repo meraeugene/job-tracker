@@ -723,8 +723,8 @@ export function VoiceInterviewPanel({
       {started && (
         <div className="fixed inset-0 z-50 h-screen overflow-hidden bg-background">
           <div className="relative flex h-screen w-screen flex-col overflow-hidden">
-            <div className="relative px-14 sm:px-5 pb-5 pt-7 text-center">
-              <div className="mb-3 inline-flex items-center gap-2">
+            <div className="relative px-4 pb-4 pt-5 text-center sm:px-5 sm:pb-5 sm:pt-7">
+              <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
                 <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                   {loading || autoSending
                     ? `${interviewerName} is thinking`
@@ -738,17 +738,17 @@ export function VoiceInterviewPanel({
                   Question {Math.min(maxTurns, turns.length + 1)} of {maxTurns}
                 </span>
               </div>
-              <h4 className="mx-auto max-w-2xl text-xl font-semibold">
+              <h4 className="mx-auto max-w-2xl text-base font-semibold sm:text-xl">
                 {job.role} interview
               </h4>
-              <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+              <p className="mx-auto mt-1 max-w-xl text-xs text-muted-foreground sm:mt-2 sm:text-sm">
                 {job.company} - {stage.title}
               </p>
               <Button
                 variant="secondary"
                 size="sm"
                 type="button"
-                className="absolute right-5 top-7"
+                className="absolute right-3 top-5 sm:right-5 sm:top-7"
                 onClick={endInterview}
               >
                 <X className="h-4 w-4" />
@@ -774,13 +774,13 @@ export function VoiceInterviewPanel({
               </div>
             )}
 
-            <div className="min-h-0 flex flex-1 flex-col items-center justify-center gap-6 bg-muted/40 p-5">
-              <section className="w-full max-w-xl">
-                <div className="mx-auto flex flex-col items-center gap-4">
+            <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted/40 p-3 pt-2 sm:justify-center sm:gap-6 sm:p-5">
+              <section className="w-full max-w-md sm:max-w-xl">
+                <div className="mx-auto flex flex-col items-center gap-3 sm:gap-4">
                   <div className="w-full overflow-hidden rounded-2xl border border-border bg-black shadow-[0_18px_48px_rgba(15,23,42,0.12)]">
                     <video
                       ref={videoRef}
-                      className="aspect-video max-h-[34vh] w-full object-cover"
+                      className="aspect-video max-h-[25vh] w-full object-cover sm:max-h-[34vh]"
                       autoPlay
                       muted
                       playsInline
@@ -795,7 +795,7 @@ export function VoiceInterviewPanel({
               </section>
 
               <section className="flex w-full max-w-5xl flex-col items-center text-center">
-                <div className="relative mb-5 flex h-24 items-center justify-center">
+                <div className="relative mb-2 flex h-14 items-center justify-center sm:mb-5 sm:h-24">
                   {/* Animated rings */}
                   <span
                     className={cn(
@@ -814,16 +814,16 @@ export function VoiceInterviewPanel({
                   {/* Mira logo badge */}
                   <div
                     className={cn(
-                      "relative flex h-24 w-24 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 shadow-[0_12px_36px_rgba(37,99,235,0.18)] transition-all duration-300",
+                      "relative flex h-14 w-14 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 shadow-[0_12px_36px_rgba(37,99,235,0.18)] transition-all duration-300 sm:h-24 sm:w-24",
                       loading || autoSending || confirmingAnswer ? "opacity-70" : "opacity-100",
                       speaking && "animate-[speaking-wave_2s_ease-in-out_infinite]",
                       listening && "animate-[breath_2.5s_ease-in-out_infinite]"
                     )}
                   >
                     {loading || autoSending || confirmingAnswer ? (
-                      <Loader2 className="h-10 w-10 animate-spin" />
+                      <Loader2 className="h-6 w-6 animate-spin sm:h-10 sm:w-10" />
                     ) : (
-                      <img src="/Mira.png" alt="M" className="h-12 w-12 object-contain" />
+                      <img src="/Mira.png" alt="M" className="h-7 w-7 object-contain sm:h-12 sm:w-12" />
                     )}
                   </div>
                 </div>
@@ -833,7 +833,7 @@ export function VoiceInterviewPanel({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <h2 className="text-2xl font-semibold tracking-normal sm:text-3xl">
+                  <h2 className="text-base font-semibold tracking-normal sm:text-2xl md:text-3xl">
                     {loading || autoSending
                       ? "Preparing the next question"
                       : confirmingAnswer
@@ -843,7 +843,7 @@ export function VoiceInterviewPanel({
                           : "Listen to Mira"}
                   </h2>
                 </motion.div>
-                <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
+                <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground sm:mt-4 sm:text-sm sm:leading-6">
                   {loading || autoSending
                     ? "Mira is reviewing your answer and choosing the next question."
                     : confirmingAnswer
@@ -854,23 +854,23 @@ export function VoiceInterviewPanel({
                 </p>
 
                 {listening && answer && (
-                  <div className="mt-4 max-w-2xl w-full flex flex-col items-center gap-3.5">
-                    <div className="w-full rounded-2xl border border-primary/20 bg-card px-4 py-3 text-left text-sm shadow-sm">
-                      <div className="mb-2 inline-flex items-center gap-2 text-primary">
+                  <div className="mt-3 max-w-2xl w-full flex flex-col items-center gap-3 sm:mt-4 sm:gap-3.5">
+                    <div className="w-full rounded-2xl border border-primary/20 bg-card px-3 py-2.5 text-left text-sm shadow-sm sm:px-4 sm:py-3">
+                      <div className="mb-1.5 inline-flex items-center gap-2 text-primary sm:mb-2">
                         <span className="relative flex h-2.5 w-2.5">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
                           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
                         </span>
                         <span className="font-medium text-xs uppercase tracking-wider">Live transcript</span>
                       </div>
-                      <p className="leading-6 text-muted-foreground italic font-light">"{answer}"</p>
+                      <p className="text-xs leading-5 text-muted-foreground italic font-light sm:text-sm sm:leading-6">"{answer}"</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                       {isMeaningfulAnswer(answer) && (
                         <Button
                           type="button"
-                          className="h-10 rounded-xl px-5 font-semibold shadow-md transition-all active:scale-95"
+                          className="h-9 rounded-xl px-4 text-sm font-semibold shadow-md transition-all active:scale-95 sm:h-10 sm:px-5"
                           onClick={() => {
                             clearSilenceTimer();
                             clearConfirmationTimer();

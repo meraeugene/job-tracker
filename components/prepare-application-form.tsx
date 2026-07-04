@@ -199,7 +199,7 @@ export function PrepareApplicationForm() {
       setLoadingStep((step) =>
         Math.min(step + 1, loadingMessages.length - 1),
       );
-    }, 1600);
+    }, 1200);
 
     return () => window.clearInterval(timer);
   }, [loading]);
