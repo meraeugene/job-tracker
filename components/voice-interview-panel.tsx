@@ -146,6 +146,36 @@ export function VoiceInterviewPanel({
   const restartAttemptsRef = useRef(0);
   const maxTurns = Math.min(5, Math.max(3, stage.questions.length || 4));
   const supported = useMemo(() => Boolean(getSpeechRecognition()), []);
+  const [voicesReady, setVoicesReady] = useState(false);
+  const [voicesTimeout, setVoicesTimeout] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      setVoicesReady(true);
+      return;
+    }
+
+    const checkVoices = () => {
+      const allVoices = window.speechSynthesis.getVoices();
+      if (allVoices.length > 0) {
+        setVoicesReady(true);
+      }
+    };
+
+    checkVoices();
+    window.speechSynthesis.onvoiceschanged = checkVoices;
+
+    const timer = window.setTimeout(() => {
+      setVoicesTimeout(true);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadingRef.current = loading || autoSending;
@@ -602,8 +632,20 @@ export function VoiceInterviewPanel({
             Start a live interview with {interviewerName}. Answer questions and
             receive real-time feedback.
           </p>
-          <Button className="mt-5" type="button" onClick={startInterview}>
-            Start AI interview
+          <Button
+            className="mt-5"
+            type="button"
+            onClick={startInterview}
+            disabled={!voicesReady && !voicesTimeout}
+          >
+            {!voicesReady && !voicesTimeout ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Preparing voice...
+              </>
+            ) : (
+              "Start AI interview"
+            )}
           </Button>
           {!supported && (
             <p className="mt-3 text-sm text-muted-foreground">
@@ -681,7 +723,7 @@ export function VoiceInterviewPanel({
       {started && (
         <div className="fixed inset-0 z-50 h-screen overflow-hidden bg-background">
           <div className="relative flex h-screen w-screen flex-col overflow-hidden">
-            <div className="relative px-5 pb-5 pt-7 text-center">
+            <div className="relative px-14 sm:px-5 pb-5 pt-7 text-center">
               <div className="mb-3 inline-flex items-center gap-2">
                 <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                   {loading || autoSending

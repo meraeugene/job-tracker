@@ -32,7 +32,7 @@ function AnimatedIntroText({ text }: { text: string }) {
   return (
     <motion.h1
       key={text}
-      className="mx-auto max-w-5xl flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-3 text-balance text-4xl font-semibold leading-tight tracking-normal sm:text-6xl"
+      className="mx-auto max-w-5xl flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-3 text-balance text-3xl font-semibold leading-tight tracking-normal sm:text-6xl"
       initial="hidden"
       animate="visible"
       variants={{
@@ -123,6 +123,7 @@ export function ResumeOnboarding({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const splashSpokenRef = useRef(false);
+  const [voicesTimeout, setVoicesTimeout] = useState(false);
 
   const getDefaultVoiceName = useCallback((voicesList: SpeechSynthesisVoice[]) => {
     const allEn = voicesList.filter((v) => v.lang.toLowerCase().includes("en"));
@@ -179,6 +180,10 @@ export function ResumeOnboarding({
 
   useEffect(() => {
     globalThis.setTimeout(() => setMounted(true), 0);
+    const timer = window.setTimeout(() => {
+      setVoicesTimeout(true);
+    }, 4000);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const activeVoiceId = mounted
@@ -324,6 +329,11 @@ export function ResumeOnboarding({
       return;
     }
 
+    // Wait until voices are loaded, or we hit the timeout
+    if (synthesisVoices.length === 0 && !voicesTimeout) {
+      return;
+    }
+
     splashSpokenRef.current = true;
 
     let advanced = false;
@@ -357,6 +367,8 @@ export function ResumeOnboarding({
     showSplash,
     stopMiraAudio,
     mounted,
+    synthesisVoices,
+    voicesTimeout,
   ]);
 
   async function upload(file: File | undefined) {
@@ -417,6 +429,7 @@ export function ResumeOnboarding({
   }
 
   if (showSplash && !resume) {
+    const voicesLoading = mounted && synthesisVoices.length === 0 && !voicesTimeout;
     return (
       <main className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef5ff_0%,#fbfdff_46%,#ffffff_100%)] px-4 py-10 pb-28 text-center">
         <div className="w-full max-w-3xl">
@@ -430,6 +443,18 @@ export function ResumeOnboarding({
           </motion.div>
 
           <AnimatedIntroText text="Welcome to Mira" />
+
+          {voicesLoading && (
+            <motion.div
+              className="mt-8 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span>Preparing voice synthesis...</span>
+            </motion.div>
+          )}
         </div>
       </main>
     );

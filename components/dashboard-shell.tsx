@@ -37,7 +37,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         className={cn(
           "mx-auto w-full px-4 pb-12 pt-28 sm:px-6 lg:px-8",
           pathname === "/board"
-            ? "max-w-[min(80vw,1540px)]"
+            ? "max-w-full lg:max-w-[min(80vw,1540px)]"
             : "max-w-6xl",
         )}
       >
