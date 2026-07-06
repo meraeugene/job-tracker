@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, FileCheck2, FileUp, Loader2 } from "lucide-react";
+import { ArrowRight, FileCheck2, FileUp, Loader2, Volume2, VolumeX } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -64,13 +64,13 @@ function AnimatedIntroText({ text }: { text: string }) {
               <img
                 src="/Mira.png"
                 alt="M"
-                className="h-22 w-22 object-contain"
+                className="h-16 w-16 object-contain sm:h-24 sm:w-24"
                 style={{
                   animation: "splash-logo-reveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both",
                 }}
               />
               <span
-                className="text-5xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
+                className="font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
                 style={{
                   animation: "splash-text-slide 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both",
                 }}
@@ -124,6 +124,41 @@ export function ResumeOnboarding({
   const audioUrlRef = useRef<string | null>(null);
   const splashSpokenRef = useRef(false);
   const [voicesTimeout, setVoicesTimeout] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedMute = window.localStorage.getItem("job-tracker:mira-mute");
+      if (storedMute === "true") {
+        setIsMuted(true);
+      }
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const newVal = !prev;
+      window.localStorage.setItem("job-tracker:mira-mute", String(newVal));
+      if (newVal) {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+      }
+      return newVal;
+    });
+  }, []);
+
+  const handleStartOnboarding = () => {
+    setShowSplash(false);
+  };
+
+  const handleContinue = () => {
+    if (introStep < introMessages.length - 1) {
+      setIntroStep((value) => value + 1);
+    } else {
+      setIntroComplete(true);
+    }
+  };
 
   const getDefaultVoiceName = useCallback((voicesList: SpeechSynthesisVoice[]) => {
     const allEn = voicesList.filter((v) => v.lang.toLowerCase().includes("en"));
@@ -214,7 +249,7 @@ export function ResumeOnboarding({
     (text: string, voiceName: string, onEnd?: () => void) => {
       stopMiraAudio();
 
-      if (typeof window === "undefined" || !window.speechSynthesis) {
+      if (isMuted || typeof window === "undefined" || !window.speechSynthesis) {
         onEnd?.();
         return;
       }
@@ -265,7 +300,7 @@ export function ResumeOnboarding({
 
       window.speechSynthesis.speak(utterance);
     },
-    [stopMiraAudio],
+    [stopMiraAudio, isMuted],
   );
 
   useEffect(() => {
@@ -287,30 +322,9 @@ export function ResumeOnboarding({
       return;
     }
 
-    let advanced = false;
-    function advanceIntro() {
-      if (advanced) return;
-      advanced = true;
-      globalThis.setTimeout(() => {
-        if (introStep < introMessages.length - 1) {
-          setIntroStep((value) =>
-            Math.min(value + 1, introMessages.length - 1),
-          );
-        } else {
-          setIntroComplete(true);
-        }
-      }, 600);
-    }
-
-    const fallbackTimer = window.setTimeout(
-      advanceIntro,
-      Math.max(8500, introMessages[introStep].split(/\s+/).length * 750),
-    );
-
-    playMiraVoice(introMessages[introStep], activeVoiceId, advanceIntro);
+    playMiraVoice(introMessages[introStep], activeVoiceId);
 
     return () => {
-      window.clearTimeout(fallbackTimer);
       stopMiraAudio();
     };
   }, [
@@ -322,53 +336,6 @@ export function ResumeOnboarding({
     activeVoiceId,
     showSplash,
     stopMiraAudio,
-  ]);
-
-  useEffect(() => {
-    if (embedded || resume || !showSplash || !mounted || splashSpokenRef.current) {
-      return;
-    }
-
-    // Wait until voices are loaded, or we hit the timeout
-    if (synthesisVoices.length === 0 && !voicesTimeout) {
-      return;
-    }
-
-    splashSpokenRef.current = true;
-
-    let advanced = false;
-    const advanceSplash = () => {
-      if (advanced) return;
-      advanced = true;
-      setShowSplash(false);
-    };
-
-    // Fallback timer in case speech synthesis fails or is blocked
-    const fallbackTimer = window.setTimeout(
-      advanceSplash,
-      5000
-    );
-
-    // Speak introduction automatically once onboarding mounts and splash overlay fades out
-    const speechDelay = window.setTimeout(() => {
-      playMiraVoice(splashMessage, activeVoiceId, advanceSplash);
-    }, 2000);
-
-    return () => {
-      window.clearTimeout(speechDelay);
-      window.clearTimeout(fallbackTimer);
-      stopMiraAudio();
-    };
-  }, [
-    embedded,
-    playMiraVoice,
-    resume,
-    activeVoiceId,
-    showSplash,
-    stopMiraAudio,
-    mounted,
-    synthesisVoices,
-    voicesTimeout,
   ]);
 
   async function upload(file: File | undefined) {
@@ -431,7 +398,24 @@ export function ResumeOnboarding({
   if (showSplash && !resume) {
     const voicesLoading = mounted && synthesisVoices.length === 0 && !voicesTimeout;
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef5ff_0%,#fbfdff_46%,#ffffff_100%)] px-4 py-10 pb-28 text-center">
+      <main className="relative flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef5ff_0%,#fbfdff_46%,#ffffff_100%)] px-4 py-10 pb-28 text-center">
+        {/* Floating Controls */}
+        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6 z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={isMuted ? "Unmute Mira" : "Mute Mira"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-5 w-5 text-red-500" />
+            ) : (
+              <Volume2 className="h-5 w-5 text-primary animate-pulse" />
+            )}
+          </Button>
+        </div>
+
         <div className="w-full max-w-3xl">
           <motion.div
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
@@ -444,7 +428,7 @@ export function ResumeOnboarding({
 
           <AnimatedIntroText text="Welcome to Mira" />
 
-          {voicesLoading && (
+          {voicesLoading ? (
             <motion.div
               className="mt-8 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
               initial={{ opacity: 0 }}
@@ -454,6 +438,22 @@ export function ResumeOnboarding({
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <span>Preparing voice synthesis...</span>
             </motion.div>
+          ) : (
+            <motion.div
+              className="mt-8"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Button
+                size="md"
+                className="px-8 py-6 rounded-full text-base font-semibold shadow-md transition-all hover:scale-[1.02]"
+                onClick={handleStartOnboarding}
+              >
+                Meet Mira
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </motion.div>
           )}
         </div>
       </main>
@@ -462,7 +462,24 @@ export function ResumeOnboarding({
 
   if (!introComplete) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 pb-28 text-center">
+      <main className="relative flex min-h-screen items-center justify-center bg-background px-4 py-10 pb-28 text-center">
+        {/* Floating Controls */}
+        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6 z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={isMuted ? "Unmute Mira" : "Mute Mira"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-5 w-5 text-red-500" />
+            ) : (
+              <Volume2 className="h-5 w-5 text-primary animate-pulse" />
+            )}
+          </Button>
+        </div>
+
         <div className="w-full max-w-6xl">
           <motion.div
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
@@ -472,12 +489,26 @@ export function ResumeOnboarding({
             {introPill}
           </motion.div>
           <AnimatedIntroText text={introMessages[introStep]} />
+
+          <div className="mt-10">
+            <Button
+              size="md"
+              className="px-8 py-6 rounded-full text-base font-semibold shadow-md transition-all hover:scale-[1.02]"
+              onClick={handleContinue}
+            >
+              {introStep === introMessages.length - 1 ? "Get Started" : "Continue"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+
           <div className="mt-9 flex justify-center gap-2">
             {introMessages.map((message, index) => (
-              <span
+              <button
                 key={message}
-                className={`h-1.5 rounded-full transition-all ${index === introStep ? "w-10 bg-primary" : "w-2 bg-muted"
+                onClick={() => setIntroStep(index)}
+                className={`h-1.5 rounded-full transition-all cursor-pointer ${index === introStep ? "w-10 bg-primary" : "w-2 bg-muted hover:bg-muted-foreground/30"
                   }`}
+                aria-label={`Go to slide ${index + 1}`}
               />
             ))}
           </div>
@@ -493,17 +524,17 @@ export function ResumeOnboarding({
       <div className="w-full max-w-3xl">
 
         <div>
-          <div className="flex items-center  overflow-hidden justify-center ">
+          <div className="flex items-center justify-center  overflow-hidden ">
             <img
               src="/Mira.png"
               alt="M"
-              className="h-24 w-24 object-contain"
+              className="h-16 w-16 object-contain sm:h-24 sm:w-24"
               style={{
                 animation: "splash-logo-reveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both",
               }}
             />
             <span
-              className="text-5xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef]"
+              className="text-3xl font-semibold tracking-tight text-blue-600 dark:text-[#e9edef] sm:text-5xl"
               style={{
                 animation: "splash-text-slide 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both",
               }}

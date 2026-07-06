@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, ShieldCheck, X } from "lucide-react";
+import { Loader2, ShieldCheck, Volume2, VolumeX, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,7 @@ const introMessage = `Hello, I am ${interviewerName}, your AI interviewer. I wil
 const miraVoiceKey = "job-tracker:mira-voice-id";
 
 function isMeaningfulAnswer(value: string) {
-  const clean = value.trim();
-  const words = clean
-    .split(/\s+/)
-    .map((word) => word.replace(/[^a-z0-9]/gi, ""))
-    .filter((word) => word.length > 1);
-
-  return clean.length >= 8 && words.length >= 2;
+  return value.trim().length > 0;
 }
 
 function FeedbackCard({ turn, index }: { turn: Turn; index: number }) {
@@ -115,7 +109,16 @@ export function VoiceInterviewPanel({
   job: ApplicationJob;
   stage: InterviewStage;
 }) {
-  const firstQuestion = `To start, tell me about yourself and how your background connects to the ${job.role} role at ${job.company}.`;
+  const interviewQuestions = useMemo(() => {
+    return [
+      `To start, please introduce yourself and tell me what interests you about the ${job.role} position at ${job.company}.`,
+      `How does your previous experience directly prepare you for the challenges of this ${job.role} role?`,
+      `Can you describe a specific project or achievement that demonstrates your capability for this position?`,
+      `In this role, how do you handle tight deadlines or conflicting priorities when working on a team?`,
+      `Finally, what are your professional goals for the near future, and how does this role fit into them?`
+    ];
+  }, [job.role, job.company]);
+  const firstQuestion = interviewQuestions[0];
   const [question, setQuestion] = useState(firstQuestion);
   const [answer, setAnswer] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -144,10 +147,34 @@ export function VoiceInterviewPanel({
   const submittingRef = useRef(false);
   const lastSubmittedRef = useRef("");
   const restartAttemptsRef = useRef(0);
-  const maxTurns = Math.min(5, Math.max(3, stage.questions.length || 4));
+  const startedRef = useRef(false);
+  const maxTurns = 5;
   const supported = useMemo(() => Boolean(getSpeechRecognition()), []);
   const [voicesReady, setVoicesReady] = useState(false);
   const [voicesTimeout, setVoicesTimeout] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedMute = window.localStorage.getItem("job-tracker:mira-mute");
+      if (storedMute === "true") {
+        setIsMuted(true);
+      }
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const newVal = !prev;
+      window.localStorage.setItem("job-tracker:mira-mute", String(newVal));
+      if (newVal) {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+      }
+      return newVal;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -250,7 +277,7 @@ export function VoiceInterviewPanel({
 
   function speak(text = question, onEnd?: () => void) {
     stopMiraAudio();
-    if (typeof window === "undefined" || !window.speechSynthesis) {
+    if (!startedRef.current || isMuted || typeof window === "undefined" || !window.speechSynthesis) {
       onEnd?.();
       return;
     }
@@ -293,11 +320,15 @@ export function VoiceInterviewPanel({
 
     utterance.onend = () => {
       setSpeaking(false);
-      onEnd?.();
+      if (startedRef.current) {
+        onEnd?.();
+      }
     };
     utterance.onerror = () => {
       setSpeaking(false);
-      onEnd?.();
+      if (startedRef.current) {
+        onEnd?.();
+      }
     };
 
     setSpeaking(true);
@@ -372,11 +403,11 @@ export function VoiceInterviewPanel({
       setAnswer(allTranscript);
 
       if (isMeaningfulAnswer(allTranscript)) {
-        // Start 7.5 second silence auto-submit timer
+        // Start 2.5 second silence auto-submit timer
         silenceTimerRef.current = window.setTimeout(() => {
           silenceTimerRef.current = null;
           confirmAnswer(allTranscript);
-        }, 7500);
+        }, 2500);
       }
     };
     recognition.onend = () => {
@@ -419,7 +450,7 @@ export function VoiceInterviewPanel({
         return;
       }
       setError(
-        "Could not capture your voice. You can type your answer instead.",
+        "Could not capture your voice. Please check your microphone and try again.",
       );
     };
     recognitionRef.current = recognition;
@@ -442,6 +473,8 @@ export function VoiceInterviewPanel({
     setListening(false);
   }, []);
 
+
+
   function confirmAnswer(finalTranscript: string) {
     if (submittingRef.current || confirmationTimerRef.current) return;
 
@@ -451,7 +484,7 @@ export function VoiceInterviewPanel({
     stopListening();
     setAnswer(finalTranscript);
     setConfirmingAnswer(true);
-    setSubmitCountdown(5);
+    setSubmitCountdown(3);
     setError(null);
 
     confirmationTimerRef.current = window.setTimeout(() => {
@@ -461,14 +494,16 @@ export function VoiceInterviewPanel({
       setConfirmingAnswer(false);
       setAutoSending(true);
       void submitAnswer(finalTranscript).finally(() => setAutoSending(false));
-    }, 5000);
+    }, 3000);
     countdownTimerRef.current = window.setInterval(() => {
       setSubmitCountdown((seconds) => Math.max(seconds - 1, 0));
     }, 1000);
   }
 
   function startInterview() {
+    setTurns([]);
     setStarted(true);
+    startedRef.current = true;
     setError(null);
     setAnswer("");
     setConfirmingAnswer(false);
@@ -488,6 +523,7 @@ export function VoiceInterviewPanel({
   }
 
   function endInterview() {
+    startedRef.current = false;
     stopListening();
     clearConfirmationTimer();
     clearCountdownTimer();
@@ -523,6 +559,8 @@ export function VoiceInterviewPanel({
     setLoading(true);
     setError(null);
 
+    let feedback = "Good answer. (AI coaching offline)";
+
     try {
       const response = await fetch("/api/interview-voice", {
         method: "POST",
@@ -546,57 +584,54 @@ export function VoiceInterviewPanel({
         nextQuestion?: string;
       };
 
-      if (payload.error && !payload.feedback) {
-        throw new Error(payload.error);
+      if (payload.feedback) {
+        feedback = payload.feedback;
+      } else if (payload.error) {
+        feedback = `AI Coaching feedback failed: ${payload.error}`;
       }
-
-      const feedback =
-        payload.feedback ||
-        "Good answer. Add a specific example and measurable result.";
-      const completedTurns = turns.length + 1;
-      const nextQuestion =
-        payload.nextQuestion || "Can you give me a more specific example?";
-      setTurns((current) => [
-        ...current,
-        { question, answer: submittedAnswer, feedback },
-      ]);
-
-      if (completedTurns >= maxTurns) {
-        const closing =
-          "That completes the interview. I saved your feedback below.";
-        setQuestion(closing);
-        speak(closing, () => {
-          stopCamera();
-          setStarted(false);
-          setQuestion(firstQuestion);
-          setAnswer("");
-        });
-        return;
-      }
-
-      const nextSpokenQuestion =
-        completedTurns === maxTurns - 1
-          ? `Final question. ${nextQuestion}`
-          : nextQuestion;
-      setQuestion(nextSpokenQuestion);
-      setAnswer("");
-      speak(nextSpokenQuestion, () => {
-        if (getSpeechRecognition()) startListening();
-      });
 
       if (!response.ok && payload.error) {
         setError(`${payload.error} Add your AI key to enable live coaching.`);
       }
     } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Interview feedback failed.",
-      );
+      console.error("Coaching feedback API error:", submitError);
+      feedback = "AI coaching offline. Your response was recorded successfully.";
     } finally {
       setLoading(false);
       submittingRef.current = false;
     }
+
+    // Always record turn, advance, and end interview cleanly regardless of API status
+    const completedTurns = turns.length + 1;
+    const nextQuestion = interviewQuestions[completedTurns] || "Could you tell me more about that?";
+    setTurns((current) => [
+      ...current,
+      { question, answer: submittedAnswer, feedback },
+    ]);
+
+    if (completedTurns >= maxTurns) {
+      const closing =
+        "That completes the interview. I saved your feedback below.";
+      setQuestion(closing);
+      speak(closing, () => {
+        startedRef.current = false;
+        stopCamera();
+        setStarted(false);
+        setQuestion(firstQuestion);
+        setAnswer("");
+      });
+      return;
+    }
+
+    const nextSpokenQuestion =
+      completedTurns === maxTurns - 1
+        ? `Final question. ${nextQuestion}`
+        : nextQuestion;
+    setQuestion(nextSpokenQuestion);
+    setAnswer("");
+    speak(nextSpokenQuestion, () => {
+      if (getSpeechRecognition()) startListening();
+    });
   }
 
   useEffect(() => {
@@ -721,187 +756,154 @@ export function VoiceInterviewPanel({
       ) : null}
 
       {started && (
-        <div className="fixed inset-0 z-50 h-screen overflow-hidden bg-background">
+        <div className="fixed inset-0 z-50 h-screen overflow-hidden bg-slate-50 dark:bg-[#0b141a] text-foreground">
           <div className="relative flex h-screen w-screen flex-col overflow-hidden">
-            <div className="relative px-4 pb-4 pt-5 text-center sm:px-5 sm:pb-5 sm:pt-7">
-              <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <header className="border-b border-border bg-card px-4 py-2.5 grid grid-cols-3 items-center shrink-0">
+              {/* Left Column: Badges */}
+              <div className="flex items-center gap-1.5 justify-start">
+                <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
                   {loading || autoSending
-                    ? `${interviewerName} is thinking`
+                    ? "Thinking"
                     : confirmingAnswer
-                      ? "Answer captured"
+                      ? "Captured"
                       : listening
-                        ? "Listening live"
-                        : "Live interview"}
+                        ? "Listening"
+                        : "Live"}
                 </span>
-                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                  Question {Math.min(maxTurns, turns.length + 1)} of {maxTurns}
+                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-[10px] font-semibold text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                  Q{Math.min(maxTurns, turns.length + 1)}/{maxTurns}
                 </span>
               </div>
-              <h4 className="mx-auto max-w-2xl text-base font-semibold sm:text-xl">
-                {job.role} interview
-              </h4>
-              <p className="mx-auto mt-1 max-w-xl text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-                {job.company} - {stage.title}
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                type="button"
-                className="absolute right-3 top-5 sm:right-5 sm:top-7"
-                onClick={endInterview}
-              >
-                <X className="h-4 w-4" />
-                End
-              </Button>
-            </div>
 
-            {lastWarning && (
-              <div className="absolute left-5 top-5 z-20 w-[min(calc(100%-2.5rem),360px)] rounded-xl border border-border bg-card/95 p-4 text-foreground shadow-[0_18px_44px_rgba(15,23,42,0.12)] ring-1 ring-black/5 backdrop-blur dark:ring-white/10">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                    <ShieldCheck className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold">
-                      Focus notice {focusWarnings}
-                    </p>
-                    <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                      {lastWarning}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted/40 p-3 pt-2 sm:justify-center sm:gap-6 sm:p-5">
-              <section className="w-full max-w-md sm:max-w-xl">
-                <div className="mx-auto flex flex-col items-center gap-3 sm:gap-4">
-                  <div className="w-full overflow-hidden rounded-2xl border border-border bg-black shadow-[0_18px_48px_rgba(15,23,42,0.12)]">
-                    <video
-                      ref={videoRef}
-                      className="aspect-video max-h-[25vh] w-full object-cover sm:max-h-[34vh]"
-                      autoPlay
-                      muted
-                      playsInline
-                    />
-                  </div>
-                  {cameraError && (
-                    <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
-                      {cameraError}
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="flex w-full max-w-5xl flex-col items-center text-center">
-                <div className="relative mb-2 flex h-14 items-center justify-center sm:mb-5 sm:h-24">
-                  {/* Animated rings */}
-                  <span
-                    className={cn(
-                      "absolute inset-0 rounded-full border-2 border-primary/30 transition-all",
-                      (listening || speaking) ? "animate-ping opacity-100" : "opacity-0"
-                    )}
-                    style={{ animationDuration: "1.4s" }}
-                  />
-                  <span
-                    className={cn(
-                      "absolute -inset-2 rounded-full border border-primary/15 transition-all",
-                      (listening || speaking) ? "animate-ping opacity-100" : "opacity-0"
-                    )}
-                    style={{ animationDuration: "1.8s", animationDelay: "0.3s" }}
-                  />
-                  {/* Mira logo badge */}
-                  <div
-                    className={cn(
-                      "relative flex h-14 w-14 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 shadow-[0_12px_36px_rgba(37,99,235,0.18)] transition-all duration-300 sm:h-24 sm:w-24",
-                      loading || autoSending || confirmingAnswer ? "opacity-70" : "opacity-100",
-                      speaking && "animate-[speaking-wave_2s_ease-in-out_infinite]",
-                      listening && "animate-[breath_2.5s_ease-in-out_infinite]"
-                    )}
-                  >
-                    {loading || autoSending || confirmingAnswer ? (
-                      <Loader2 className="h-6 w-6 animate-spin sm:h-10 sm:w-10" />
-                    ) : (
-                      <img src="/Mira.png" alt="M" className="h-7 w-7 object-contain sm:h-12 sm:w-12" />
-                    )}
-                  </div>
-                </div>
-                <motion.div
-                  key={`${listening}-${loading}-${autoSending}-${confirmingAnswer}`}
-                  className="max-w-xl"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <h2 className="text-base font-semibold tracking-normal sm:text-2xl md:text-3xl">
-                    {loading || autoSending
-                      ? "Preparing the next question"
-                      : confirmingAnswer
-                        ? "Answer captured"
-                        : listening
-                          ? "Your turn"
-                          : "Listen to Mira"}
-                  </h2>
-                </motion.div>
-                <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground sm:mt-4 sm:text-sm sm:leading-6">
-                  {loading || autoSending
-                    ? "Mira is reviewing your answer and choosing the next question."
-                    : confirmingAnswer
-                      ? `Submitting in ${submitCountdown || 1} seconds.`
-                      : listening
-                        ? "Speak naturally. Speak clearly and pause when finished."
-                        : "The question is spoken aloud, just like a live interview."}
+              {/* Center Column: Centered title / subtitle */}
+              <div className="text-center flex flex-col items-center justify-center min-w-0">
+                <h4 className="text-xs font-bold tracking-tight text-foreground truncate w-full max-w-[130px] sm:max-w-xs md:max-w-md">
+                  {job.role}
+                </h4>
+                <p className="text-[9px] text-muted-foreground truncate w-full max-w-[130px] sm:max-w-xs">
+                  {job.company} — {stage.title}
                 </p>
+              </div>
 
-                {listening && answer && (
-                  <div className="mt-3 max-w-2xl w-full flex flex-col items-center gap-3 sm:mt-4 sm:gap-3.5">
-                    <div className="w-full rounded-2xl border border-primary/20 bg-card px-3 py-2.5 text-left text-sm shadow-sm sm:px-4 sm:py-3">
-                      <div className="mb-1.5 inline-flex items-center gap-2 text-primary sm:mb-2">
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-                        </span>
-                        <span className="font-medium text-xs uppercase tracking-wider">Live transcript</span>
-                      </div>
-                      <p className="text-xs leading-5 text-muted-foreground italic font-light sm:text-sm sm:leading-6">"{answer}"</p>
-                    </div>
+              {/* Right Column: Controls */}
+              <div className="flex items-center gap-1.5 justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={toggleMute}
+                  title={isMuted ? "Unmute Mira" : "Mute Mira"}
+                  className="h-8 w-8 rounded-full flex items-center justify-center p-0"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-3.5 w-3.5 text-red-500" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5 text-primary animate-pulse" />
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={endInterview}
+                  className="h-8 gap-1 px-2.5 rounded-full flex items-center text-[11px] font-semibold"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>End</span>
+                </Button>
+              </div>
+            </header>
 
-                    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                      {isMeaningfulAnswer(answer) && (
-                        <Button
-                          type="button"
-                          className="h-9 rounded-xl px-4 text-sm font-semibold shadow-md transition-all active:scale-95 sm:h-10 sm:px-5"
-                          onClick={() => {
-                            clearSilenceTimer();
-                            clearConfirmationTimer();
-                            clearCountdownTimer();
-                            stopListening();
-                            setConfirmingAnswer(false);
-                            setSubmitCountdown(0);
-                            setAutoSending(true);
-                            void submitAnswer(answer).finally(() => setAutoSending(false));
-                          }}
-                        >
-                          Submit Answer
-                        </Button>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {isMeaningfulAnswer(answer)
-                          ? "Or pause for 7s to auto-submit"
-                          : "Keep speaking to build a meaningful answer..."}
+            <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center bg-slate-50 dark:bg-[#0b141a] p-4 sm:p-6 md:p-8 overflow-y-auto">
+              {lastWarning && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full border border-amber-250 bg-amber-50/95 px-5 py-2 text-xs text-amber-800 shadow-md backdrop-blur dark:border-amber-900/40 dark:bg-amber-950/80 dark:text-amber-300 animate-pulse whitespace-nowrap">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                  </span>
+                  <span className="font-semibold">Notice:</span>
+                  <span>Tab switch detected ({focusWarnings} warnings)</span>
+                </div>
+              )}
+
+              <div className="flex flex-col items-center justify-center gap-12 sm:gap-16 w-full max-w-2xl my-auto px-4">
+                {/* Center: Camera Preview Container */}
+                <div className="relative w-full aspect-video rounded-3xl overflow-hidden border border-zinc-200 bg-black shadow-xl dark:border-zinc-800">
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    muted
+                    playsInline
+                  />
+                  
+                  {cameraError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/90 p-4 text-center">
+                      <p className="text-xs text-red-200 bg-red-950/40 border border-red-900/50 rounded-xl px-4 py-3">
+                        {cameraError}
                       </p>
                     </div>
-                  </div>
-                )}
-              </section>
+                  )}
+                </div>
+
+                {/* Bottom: Pulsing Mira Avatar & Circular Countdown Loader */}
+                <div className="flex flex-col items-center justify-center relative">
+                  {confirmingAnswer ? (
+                    /* Circular Countdown Loader in place of static avatar */
+                    <div className="relative flex h-28 w-28 items-center justify-center sm:h-36 sm:w-36 animate-pulse">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/10 opacity-75" />
+                      <span className="relative text-2xl font-extrabold text-primary sm:text-3xl">
+                        {submitCountdown || 1}s
+                      </span>
+                      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full -rotate-90">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                          fill="transparent"
+                          className="text-primary/10"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                          fill="transparent"
+                          className="text-primary transition-all duration-1000"
+                          strokeDasharray={282.7}
+                          strokeDashoffset={282.7 - (282.7 * (submitCountdown || 1)) / 3}
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    /* Static Pulsing Mira Avatar */
+                    <div
+                      className={cn(
+                        "relative flex h-28 w-28 items-center justify-center rounded-full bg-white border border-zinc-200 shadow-md transition-all duration-300 sm:h-36 sm:w-36 dark:bg-zinc-800 dark:border-zinc-700",
+                        loading || autoSending ? "opacity-75" : "opacity-100",
+                        speaking && "animate-[speaking-wave_2s_ease-in-out_infinite] ring-4 ring-primary/20",
+                        listening && "animate-[breath_2.5s_ease-in-out_infinite] ring-4 ring-emerald-500/10"
+                      )}
+                    >
+                      {loading || autoSending ? (
+                        <Loader2 className="h-10 w-10 animate-spin text-primary sm:h-14 sm:w-14" />
+                      ) : (
+                        <img src="/Mira.png" alt="Mira" className="h-12 w-12 object-contain sm:h-16 sm:w-16" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
       {started && !supported && (
         <p className="mt-2 text-sm text-muted-foreground">
-          Voice capture is unavailable in this browser. Typed answers still
-          work.
+          Voice capture is unavailable in this browser.
         </p>
       )}
       {error && <p className="mt-3 text-sm text-red-600 px-4 text-center">{error}</p>}

@@ -192,6 +192,7 @@ export function InterviewPrepTimeline({
   function selectCard(index: number) {
     setDirection(index > cardIndex ? 1 : -1);
     setCardIndex(index);
+    setRevealed({});
   }
 
   if (!stage) return null;
@@ -286,11 +287,11 @@ export function InterviewPrepTimeline({
                       Card {cardIndex + 1} / {stage.questions.length}
                     </span>
                   </div>
-                  <div className="relative px-10 sm:px-14">
+                  <div className="relative px-0 sm:px-14">
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="absolute left-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
+                      className="hidden sm:flex absolute left-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
                       disabled={cardIndex === 0}
                       aria-label="Previous card"
                       onClick={() => selectCard(Math.max(0, cardIndex - 1))}
@@ -299,7 +300,7 @@ export function InterviewPrepTimeline({
                     </Button>
                     <Button
                       size="sm"
-                      className="absolute right-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
+                      className="hidden sm:flex absolute right-0 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full p-0 sm:h-11 sm:w-11"
                       disabled={cardIndex === stage.questions.length - 1}
                       aria-label="Next card"
                       onClick={() =>
@@ -311,10 +312,11 @@ export function InterviewPrepTimeline({
                       <ArrowRight className="h-5 w-5" />
                     </Button>
                     <div className="[perspective:1400px]">
-                      <motion.button
+                      <motion.div
                         key={`${phaseIndex}-${cardIndex}`}
-                        type="button"
-                        className="relative min-h-[320px] w-full overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_30px_80px_rgba(37,99,235,0.16)] focus-visible:ring-2 focus-visible:ring-primary/25 sm:min-h-[380px] sm:p-10"
+                        role="button"
+                        tabIndex={0}
+                        className="relative min-h-[320px] w-full overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 text-center shadow-[0_24px_64px_rgba(37,99,235,0.10)] outline-none transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_30px_80px_rgba(37,99,235,0.16)] focus-visible:ring-2 focus-visible:ring-primary/25 sm:min-h-[380px] sm:p-10 cursor-pointer"
                         initial={{
                           opacity: 0,
                           x: direction * 42,
@@ -346,35 +348,77 @@ export function InterviewPrepTimeline({
                             [key]: !isRevealed,
                           }))
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setRevealed((current) => ({
+                              ...current,
+                              [key]: !isRevealed,
+                            }));
+                          }
+                        }}
                       >
-                        <div
-                          className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10 [backface-visibility:hidden]"
-                          style={{ transform: "rotateY(0deg)" }}
-                        >
-                          <div>
-                            <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
-                              Question
-                            </p>
-                            <p className="mx-auto max-w-3xl text-base font-semibold leading-snug text-foreground sm:text-2xl sm:leading-tight md:text-3xl">
-                              {question}
-                            </p>
+                        {!isRevealed ? (
+                          <div
+                            className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10"
+                          >
+                            <div>
+                              <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
+                                Question
+                              </p>
+                              <p className="mx-auto max-w-3xl text-base font-semibold leading-snug text-foreground sm:text-2xl sm:leading-tight md:text-3xl">
+                                {question}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <div
-                          className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10 [backface-visibility:hidden]"
-                          style={{ transform: "rotateY(180deg)" }}
-                        >
-                          <div>
-                            <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
-                              Answer
-                            </p>
-                            <p className="mx-auto max-w-3xl text-sm font-medium leading-6 text-foreground sm:text-lg sm:leading-8 md:text-xl">
-                              {answer}
-                            </p>
+                        ) : (
+                          <div
+                            className="absolute inset-0 overflow-y-auto grid place-items-center p-5 sm:p-10"
+                            style={{
+                              transform: "rotateY(180deg)",
+                            }}
+                          >
+                            <div>
+                              <p className="mb-4 text-xs font-semibold uppercase text-primary sm:mb-6">
+                                Answer
+                              </p>
+                              <p className="mx-auto max-w-3xl text-sm font-medium leading-6 text-foreground sm:text-lg sm:leading-8 md:text-xl">
+                                {answer}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </motion.button>
+                        )}
+                      </motion.div>
                     </div>
+                  </div>
+
+                  {/* Mobile controls */}
+                  <div className="mt-5 flex items-center justify-between sm:hidden px-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-10 w-10 rounded-full flex items-center justify-center"
+                      disabled={cardIndex === 0}
+                      onClick={() => selectCard(Math.max(0, cardIndex - 1))}
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Card {cardIndex + 1} / {stage.questions.length}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-10 w-10 rounded-full flex items-center justify-center"
+                      disabled={cardIndex === stage.questions.length - 1}
+                      onClick={() =>
+                        selectCard(
+                          Math.min(stage.questions.length - 1, cardIndex + 1),
+                        )
+                      }
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
                   </div>
                 </>
               );
